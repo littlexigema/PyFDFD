@@ -1,7 +1,8 @@
 import torch
 import math
+from config import eps0
 
-def build_circle(I,J,dx,dy,epsilon_rb,sigma_b,epsilon_robj,sigma_obj,r,x_c,y_c):
+def build_circle(omega,I,J,dx,dy,epsilon_rb,sigma_b,epsilon_robj,sigma_obj,r,x_c,y_c):
     """
     I,J均是background domain的单边像素个数([-I,I],[-J,J])
     r(m)
@@ -24,5 +25,5 @@ def build_circle(I,J,dx,dy,epsilon_rb,sigma_b,epsilon_robj,sigma_obj,r,x_c,y_c):
                 sigma[i,j] = sigma_obj
     epsilon_r.view(-1)
     sigma.view(-1)
-    tau[:] = (epsilon_r[:]-epsilon_rb)-1j*(sigma[:]-sigma_b)
+    tau[:] = (epsilon_r[:]/epsilon_rb-1)-1j*(sigma[:]-sigma_b)/omega/epsilon_rb/eps0
     return tau

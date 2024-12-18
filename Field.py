@@ -1,7 +1,8 @@
 from functions import hankel_0_1
-from config import m_unit,R_transmitter,R_receiver,C_0,C_norm,pi,centre,xs,ys
 from typing import Tuple,Union
 from tqdm import trange
+from config import *
+import build_circle
 import torch
 # import pandas as pd
 # data = pd.read_csv('./data.csv',header=None).values
@@ -57,22 +58,48 @@ class Field:
         self.theta_T = theta_T;self.theta_R = theta_R;self.T_R = T_R;self.R_R = R_R;
         self.pos_T = pos_T;self.pos_R = pos_R
         self.n_receiver = n_receiver;self.n_transmitter = n_transmitter
-
         NX, NY = torch.meshgrid([torch.arange(-Field.nx,Field.nx),torch.arange(-Field.ny,Field.ny)])
         pos_N = (NX + 1j*NY)*Field.m_unit#转换单位到m
 
-        self.pos_N = pos_N
+        self.pos_N = pos_N#单位m
 
         k = omega#*torch.sqrt()#
+        self.k = k
+        self.omega = omega
         for i in trange(n_transmitter,desc="creating incident field"):
             R = torch.abs(pos_T[i]-pos_R)#transmitter与receiver之间距离
             self.E_R[:,i] = 1j/4*hankel_0_1(k*R)#在这里我们改成k*R似乎传入负值计算出来是nan+nanj
             R = torch.abs(pos_T[i]-pos_N).view(-1)#行优先展平，transmitter与each unit之间距离
             self.E_inc[:,i] = 1j/4*hankel_0_1(k*R)
 
-    def set_phi():
-        
-        
+    def set_phi(self):
+
+        assert hasattr(self,'n_receiver'),RuntimeError("Please run Field.set_incident_E() before using this function!")
+
+        # Phi = torch.empty(self.n_receiver,Field.nx*Field.ny*4)
+        R = self.pos_R.view(-1,1)-self.pos_N.view(-1)#行优先展开，receiver与each unit的距离
+        R = torch.abs(R)
+        self.Phi = 1j/4*hankel_0_1(self.k*R)
+        self.Phi/=self.omega
+
+    def set_chi(self,fre:list):
+        assert isinstance(fre,list), TypeError('type(fre) should be list not {}!'.format(type(fre)))
+        self.fre = fre
+        self.chi = Field.get_chi(fre,{'epsilon_robj':3,'sigma_obj':0,'r':0.01,'x_c':0,'y_c':0})
+
+    def set_scatter_E(self):
+        self.vJ = self.chi#contrast source
+
+    def get_chi(fre:list,**kargs):
+        assert isinstance(fre,list), TypeError('type(fre) should be list not {}!'.format(type(fre)))
+        len_fre = len(fre)
+        chi = torch.empty(Field.nx*Field.ny*4,len_fre,dtype = torch.complex64)
+        fre = torch.tensor(fre)
+        omega = 2*pi*fre 
+        if name=="circle":
+            for i in range(len_fre):
+                chi[:,i] = build_circle(omega[i],Field.nx,Field.ny,Field.m_unit,Field.m_unit,eps_b,sigma_b,kargs)
+        return chi
 
     def get_scatter():
         """
@@ -96,10 +123,12 @@ if __name__=="__main__":
     theta_R = torch.linspace(0,2*pi,n_R+1)[:-1]
     field = Field()
     field.set_incident_E(omega,theta_T,theta_R,T_R,R_R)
+    field.set_phi()
     # pos_T = torch.concat([torch.cos(theta_T),torch.sin(theta_T)],dim=1)*R_transmitter
     # pos_R = torch.concat([torch.cos(theta_R),torch.sin(theta_R)],dim=1)*R_receiver
     # E_R = Field.get_ER(omega,theta_T,theta_R,T_R,R_R)
     # E_inc = Field.get_Einc(omega,theta_T,T_R)
+    print(field.Phi.shape)
     print(field.E_inc.shape)
 
 
