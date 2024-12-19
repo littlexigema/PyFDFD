@@ -11,11 +11,12 @@ import torch
 
 class Field:
     m_unit = m_unit
-    invdom = [centre[0]-xs,centre[0]+xs,centre[1]-ys,centre[1]+ys,centre[2],centre[2]]
+    invdom = invdom#(mm)
     # xlchi  = round()
     nx     = int(xs*1e-3//m_unit)
     ny     = int(ys*1e-3//m_unit)
-    
+    Lpml   = [d_pml,d_pml,0]
+
     def __init__(self) :
         """
         定义离散场类，存储多种离散场,
