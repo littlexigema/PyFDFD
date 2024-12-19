@@ -1,5 +1,5 @@
-from FT import FT
-from GT import GT
+from .FT import FT
+from .GT import GT
 
 class EquationType:
     def __init__(self, f, ge):
