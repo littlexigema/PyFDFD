@@ -1,8 +1,8 @@
+from build_object import build_circle
 from functions import hankel_0_1
 from typing import Tuple,Union
 from tqdm import trange
 from config import *
-import build_circle
 import torch
 # import pandas as pd
 # data = pd.read_csv('./data.csv',header=None).values
@@ -82,23 +82,27 @@ class Field:
         self.Phi = 1j/4*hankel_0_1(self.k*R)
         self.Phi/=self.omega
 
-    def set_chi(self,fre:list):
-        assert isinstance(fre,list), TypeError('type(fre) should be list not {}!'.format(type(fre)))
-        self.fre = fre
-        self.chi = Field.get_chi(fre,{'epsilon_robj':3,'sigma_obj':0,'r':0.01,'x_c':0,'y_c':0})
+    def set_chi(self,omega:float):#fre:list
+        # assert isinstance(fre,list), TypeError('type(fre) should be list not {}!'.format(type(fre)))
+        assert omega==self.omega, RuntimeError("omega of chi is not equal to Field.omega")
+        self.chi = Field.get_chi(omega,name='circle',**{'epsilon_robj':3,'sigma_obj':0,'r':0.01,'x_c':0,'y_c':0})
 
     def set_scatter_E(self):
-        self.vJ = self.chi#contrast source
+        # for i in range(len(self.fre)):
+        assert hasattr(self,'E_inc'), RuntimeError("Please run Field.set_incident_E() before using this function!")
+        self.vJ = self.chi*self.E_inc    #contrast source (N_unit,N_trans)
+        self.E_scat = self.Phi@self.vJ#(N_rece,N_unit) x (N_unit,N_trans)
+        self.E_tot = self.E_R+self.E_scat
+        # print(self.E_scat.shape)
 
-    def get_chi(fre:list,**kargs):
-        assert isinstance(fre,list), TypeError('type(fre) should be list not {}!'.format(type(fre)))
-        len_fre = len(fre)
-        chi = torch.empty(Field.nx*Field.ny*4,len_fre,dtype = torch.complex64)
-        fre = torch.tensor(fre)
-        omega = 2*pi*fre 
+    def get_chi(omega,name,**kargs):
+        # assert isinstance(fre,list), TypeError('type(fre) should be list not {}!'.format(type(fre)))
+        # len_fre = len(fre)
+        chi = torch.empty(Field.nx*Field.ny*4,1,dtype = torch.complex64)#len_fre
+        # fre = torch.tensor(fre)
         if name=="circle":
-            for i in range(len_fre):
-                chi[:,i] = build_circle(omega[i],Field.nx,Field.ny,Field.m_unit,Field.m_unit,eps_b,sigma_b,kargs)
+            # for i in range(len_fre):
+            chi = build_circle(omega,Field.nx,Field.ny,Field.m_unit,Field.m_unit,eps_b,sigma_b,**kargs)
         return chi
 
     def get_scatter():
@@ -112,9 +116,9 @@ class Field:
 
     
 if __name__=="__main__":
-    from config import R_receiver,R_transmitter
+    # from config import R_receiver,R_transmitter
     n_T , n_R = 18,360
-    fre = 2#2GHZ
+    # fre = 2#2GHZ
     lambda_ = C_0/(fre*1e9)
     # wvlen = lambda_/m_unit
     omega = 2*torch.pi*C_norm/lambda_
@@ -124,6 +128,8 @@ if __name__=="__main__":
     field = Field()
     field.set_incident_E(omega,theta_T,theta_R,T_R,R_R)
     field.set_phi()
+    field.set_chi(fre)
+    field.set_scatter_E()
     # pos_T = torch.concat([torch.cos(theta_T),torch.sin(theta_T)],dim=1)*R_transmitter
     # pos_R = torch.concat([torch.cos(theta_R),torch.sin(theta_R)],dim=1)*R_receiver
     # E_R = Field.get_ER(omega,theta_T,theta_R,T_R,R_R)
