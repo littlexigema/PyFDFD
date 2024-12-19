@@ -82,10 +82,10 @@ class Field:
         self.Phi = 1j/4*hankel_0_1(self.k*R)
         self.Phi/=self.omega
 
-    def set_chi(self,omega:float):#fre:list
+    def set_chi(self,omega:float,name):#fre:list
         # assert isinstance(fre,list), TypeError('type(fre) should be list not {}!'.format(type(fre)))
         assert omega==self.omega, RuntimeError("omega of chi is not equal to Field.omega")
-        self.chi = Field.get_chi(omega,name='circle',**{'epsilon_robj':3,'sigma_obj':0,'r':0.01,'x_c':0,'y_c':0})
+        self.chi = Field.get_chi(omega,name,**{'epsilon_robj':3,'sigma_obj':0,'r':0.01,'x_c':0,'y_c':0})
 
     def set_scatter_E(self):
         # for i in range(len(self.fre)):
