@@ -1,5 +1,5 @@
 import numpy as np
-from shape import Shape
+from .Shape import Shape
 
 class Box(Shape):
     """

@@ -1,4 +1,6 @@
-from base import PML,EquationType,FT,GT,Box
+from PyFDFD.grid.generate_lprim3d import generate_lprim3d
+from PyFDFD.base import PML,EquationType,FT,GT
+from PyFDFD.shape import Box
 from config import *
 import numpy as np
 
@@ -37,4 +39,9 @@ def build_system(grid_type,pml,domain,Lpml):
 
     return M_s, A, b
 
-def generate_lprim3d():
+# def generate_lprim3d():
+#     pass
+
+
+if __name__=="__main__":
+    pass

@@ -1,5 +1,6 @@
 import numpy as np
-from base import Axis
+from ..base.Axis import Axis
+from .Interval import Interval
 
 class Shape:
     def __init__(self, lprim_list, lsf, dl_max=None):
@@ -18,9 +19,9 @@ class Shape:
             dl_max = np.inf
         
         self._validate_dl_max(dl_max)
-        self.dl_max = np.array([dl_max] * Axis.count)
+        self.dl_max = [dl_max] * Axis.count()
         
-        self.interval = [self._create_interval(lprim_list[w], dl_max[w]) for w in range(Axis.count)]
+        self.interval = [Interval(lprim_list[w], self.dl_max[w]) for w in range(Axis.count())]
         self.n_subpxls = 10
 
     @staticmethod
@@ -36,13 +37,13 @@ class Shape:
         elif dl_max <= 0:
             raise ValueError("dl_max must be positive.")
 
-    @staticmethod
-    def _create_interval(lprim, dl):
-        return {
-            'lprim': lprim,
-            'bound': [lprim.min(), lprim.max()],
-            'dl_max': dl
-        }
+    # @staticmethod
+    # def _create_interval(lprim, dl):
+    #     return {
+    #         'lprim': lprim,
+    #         'bound': [lprim.min(), lprim.max()],
+    #         'dl_max': dl
+    #     }
 
     @property
     def lprim(self):
@@ -60,9 +61,9 @@ class Shape:
     def L(self):
         return np.diff(self.bound, axis=1).flatten()
 
-    @property
-    def dl_max(self):
-        return np.array([interval['dl_max'] for interval in self.interval])
+    # @property
+    # def dl_max(self):
+    #     self.dl_max
 
     def circumbox_contains(self, x, y, z):
         truth = np.ones_like(x, dtype=bool)

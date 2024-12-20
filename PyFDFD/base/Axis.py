@@ -44,5 +44,5 @@ if __name__ == "__main__":
         print(f"The integer value of Axis.{w.name} is {w.value}")
 
     # Test cyclic permutation
-    p, q, r = Axis.Y.cycle()
-    print(f"The cyclic permutation of [X, Y, Z] beginning with Y is [{r.name}, {p.name}, {q.name}]")
+    # p, q, r = Axis.Y.cycle()
+    # print(f"The cyclic permutation of [X, Y, Z] beginning with Y is [{r.name}, {p.name}, {q.name}]")
