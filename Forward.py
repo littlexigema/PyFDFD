@@ -14,7 +14,7 @@ class Forward_model:
     zhchi           = round(invdom[5] / m_unit)
     def __init__(self):
         self.dl = 1
-        tmp = np.array([[Forward_model.xlchi,Forward_model.xhchi],[Forward_model.ylchi,Forward_model.yhchi],[Forward_model.zlchi,Forward_model.zhchi]])
+        tmp = np.array([[Forward_model.xlchi,Forward_model.xhchi],[Forward_model.ylchi,Forward_model.yhchi],[0,1]])
         self.domain = Box(tmp,self.dl)
         self.field = Field()
     def get_system_matrix(self):

@@ -21,3 +21,5 @@ end
 ## 后续可能的改进
 目前使用prim,dual两个网格计算FDFD Amatrix,
 后续可以使用[Lecture-4e-FDFD-Implementation.pdf](../Lecture-4e-FDFD-Implementation.pdf)改进网格计算(**maybe**)
+
+## generate_lprim3d值只完成了withuniform=True情况的代码正确性验证

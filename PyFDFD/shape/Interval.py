@@ -20,10 +20,13 @@ class Interval:
 
         self.bound = [self.lprim.min(), self.lprim.max()]  # Set bounds
 
+        self.lprim = self.lprim.tolist()
+
         if not (isinstance(dl_max, (int, float)) and dl_max > 0):
             raise ValueError("'dl_max' should be positive and real.")
         self.dl_max = dl_max
 
+    @property
     def L(self):
         """
         Compute the length of the interval.

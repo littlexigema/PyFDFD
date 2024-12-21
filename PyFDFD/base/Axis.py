@@ -38,10 +38,14 @@ class Axis(Enum):
         return p, q, r
 
 # Example usage
-if __name__ == "__main__":
-    print(f"# of instances of Axis: {Axis.count()}")
-    for w in Axis.elems():
-        print(f"The integer value of Axis.{w.name} is {w.value}")
+if __name__=="__main__":
+    pass
+    # lst=[1,2,3]
+    # for w in Axis.elems():
+    #     print(lst[w])
+    # print(f"# of instances of Axis: {Axis.count()}")
+    # for w in Axis.elems():
+    #     print(f"The integer value of Axis.{w.name} is {w.value}")
 
     # Test cyclic permutation
     # p, q, r = Axis.Y.cycle()

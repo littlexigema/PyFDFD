@@ -36,12 +36,15 @@ class Sign(Enum):
 
 # Example usage
 if __name__ == "__main__":
-    print(f"# of instances of Sign: {Sign.count()}")
-    for sign in Sign.elems():
-        print(f"Sign.{sign.name} corresponds to {sign.value}")
+    print(Sign.N.value)
+    # lst = [1,2,3]
+    # for w in 
+    # print(f"# of instances of Sign: {Sign.count()}")
+    # for sign in Sign.elems():
+    #     print(f"Sign.{sign.name} corresponds to {sign.value}")
     
-    # Test alter method
-    sign = Sign.N
-    print(f"Alter of {sign.name}: {sign.alter().name}")
-    sign = Sign.P
-    print(f"Alter of {sign.name}: {sign.alter().name}")
+    # # Test alter method
+    # sign = Sign.N
+    # print(f"Alter of {sign.name}: {sign.alter().name}")
+    # sign = Sign.P
+    # print(f"Alter of {sign.name}: {sign.alter().name}")

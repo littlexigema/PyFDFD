@@ -1,5 +1,6 @@
 import numpy as np
 from ..base.Axis import Axis
+from ..base.Sign import Sign
 from .Interval import Interval
 
 class Shape:
@@ -47,19 +48,29 @@ class Shape:
 
     @property
     def lprim(self):
-        return [interval['lprim'] for interval in self.interval]
+        print('??')
+        lprim = [None] * Axis.count()
+        for w in range(Axis.count()):
+            lprim[w] = self.interval[w].lprim
+        return lprim
 
     @property
     def bound(self):
-        return np.array([[interval['bound'][0], interval['bound'][1]] for interval in self.interval])
-
+        bound = np.empty((Axis.count(),Sign.count()))
+        for w in range(Axis.count()):
+            bound[w,:] = self.interval[w].bound
+        return bound
+        
     @property
     def cb_center(self):
         return np.mean(self.bound, axis=1)
 
     @property
     def L(self):
-        return np.diff(self.bound, axis=1).flatten()
+        l = np.empty(Axis.count())
+        for w in range(Axis.count()):
+            l[w] = self.interval[w].L
+        return l
 
     # @property
     # def dl_max(self):

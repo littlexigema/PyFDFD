@@ -32,9 +32,9 @@ def build_system(grid_type,pml,domain,Lpml):
     """
 
     shape_array,sshape_array = None,None#没有实例化的shape
-    src_array = None
-    withuniformgrid = False
-    [lprim, Npml] = generate_lprim3d(domain, Lpml, [shape_array, sshape_array], src_array, withuniformgrid)
+    src_array = list()
+    withuniformgrid = True
+    [lprim, Npml] = generate_lprim3d(domain, Lpml, list(), src_array, withuniformgrid)
     grid3d = Grid3d(osc.unit, lprim, Npml, bc)
 
     return M_s, A, b
