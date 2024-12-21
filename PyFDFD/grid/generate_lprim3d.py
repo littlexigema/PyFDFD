@@ -30,7 +30,7 @@ def generate_lprim3d(domain:Box, Lpml, shape_array=list, src_array=list, withuni
               f"significantly differs from intended separation {dl_intended}: error is {error_dl * 100:.2f} percent.")
             Npml[w,0] = (lprim<(lprim[0]+Lpml[w,0])).sum()#sign.n#区域添加PML厚度
             Npml[w,1] = (lprim>(lprim[-1]-Lpml[w,1])).sum()#sign.p
-            lprim_cell.append(lprim)
+            lprim_cell[w] = lprim
     else:
         intervals = [[] for w in range(Axis.count())]  # 使用字典来存储 intervals
 
@@ -79,8 +79,8 @@ def generate_lprim3d(domain:Box, Lpml, shape_array=list, src_array=list, withuni
             Npml[w, Sign.n] = np.sum(lprim < lprim[0] + Lpml[w, Sign.n])
             Npml[w, Sign.p] = np.sum(lprim > lprim[-1] - Lpml[w, Sign.p])
             lprim_cell[w] = lprim
-    return 0,0
-    # return lprim_cell, Npml
+    # return 0,0
+    return lprim_cell, Npml
 
 def generate_lprim1d_part(domain: Interval, Lpml, interval_array, lprim0_array, ldual0_array):
     """

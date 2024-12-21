@@ -1,5 +1,5 @@
 import numpy as np
-from base import Axis,PhysC,PhysQ,PhysUnit,BC,Sign,GT
+from PyFDFD.base import Axis,PhysC,PhysQ,PhysUnit,BC,Sign,GT
 
 class Grid1d:
     """

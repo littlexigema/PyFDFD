@@ -1,6 +1,6 @@
-from base import PhysUnit
+from PyFDFD.base.PhysUnit import PhysUnit
+from PyFDFD.grid.Grid1d import Grid1d
 import numpy as np
-import Grid1d
 
 
 

@@ -106,6 +106,14 @@ class Field:
             chi = build_circle(omega,Field.nx,Field.ny,Field.m_unit,Field.m_unit,eps_b,sigma_b,**kargs)
         return chi
 
+    def get_lambda(fre:Union[int,float]):
+        """
+            根据输入频率得到波长和离散波长
+        """
+        lambda_ = C_0/(fre*1e9)
+        return lambda_,lambda_/Field.m_unit
+
+
     def get_scatter():
         """
             根据FDFD计算公式,E^s = \phi * vJ
