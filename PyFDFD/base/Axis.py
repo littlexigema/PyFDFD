@@ -4,10 +4,27 @@ class Axis(Enum):
     """
     Axis is an enumeration class representing the Cartesian axes x, y, z.
     """
+    X = (0, 'x-axis')
+    Y = (1, 'y-axis')
+    Z = (2, 'z-axis')
 
-    X = 'x'
-    Y = 'y'
-    Z = 'z'
+    def __new__(cls, value, description):
+        obj = object.__new__(cls)
+        obj._value_ = value
+        obj.description = description
+        return obj
+
+    def __str__(self):
+        return f'{self.name} ({self.description})'
+
+    def __repr__(self):
+        return f'{self.name} ({self.description})'
+
+    def __int__(self):
+        return self.value
+
+    def __index__(self):
+        return self.value
 
     @staticmethod
     def elems():
@@ -23,23 +40,16 @@ class Axis(Enum):
         """
         return len(Axis.elems())
 
-    def cycle(self):
-        """
-        Returns a cyclic permutation of [Axis.X, Axis.Y, Axis.Z] such that r == self.
-
-        Returns:
-            tuple: (p, q, r) where p and q are the remaining elements of the permutation.
-        """
-        elems = Axis.elems()
-        idx = elems.index(self)
-        r = elems[idx]
-        p = elems[(idx + 1) % len(elems)]
-        q = elems[(idx + 2) % len(elems)]
-        return p, q, r
-
 # Example usage
-if __name__=="__main__":
-    pass
+if __name__ == "__main__":
+    lst = ['x', 'y', 'z']
+    print(lst[Axis.X])  # 自动转换为整数
+    # print(Axis.elems())
+    for axis in Axis.elems():
+        print(f"Axis.{axis.name} corresponds to {axis.value}")
+    print(Axis.X)  # 输出: X (x-axis)
+    print(int(Axis.X))  # 输出: 0
+    print(repr(Axis.X))  # 输出: X (x-axis)
     # lst=[1,2,3]
     # for w in Axis.elems():
     #     print(lst[w])

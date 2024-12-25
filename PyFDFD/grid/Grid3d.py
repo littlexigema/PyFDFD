@@ -1,15 +1,15 @@
 from PyFDFD.base.PhysUnit import PhysUnit
 from PyFDFD.grid.Grid1d import Grid1d
+from PyFDFD.base.Axis import Axis
 import numpy as np
-
-
+import torch
 
 class Grid3d:
     """
     Grid3d class to represent the 3D Yee grid structure.
     """
 
-    def __init__(self, unit, lprim_cell, Npml=0, bc=None):
+    def __init__(self, unit:PhysUnit, lprim_cell:list, Npml=0, bc=None):
         """
         Initialize the Grid3d object.
 
@@ -22,12 +22,12 @@ class Grid3d:
         self._validate_unit(unit)
         self._validate_lprim_cell(lprim_cell)
         Npml = self._expand_to_matrix(Npml, 3, 2)  # Assuming 3 axes and 2 signs.
-        bc = self._expand_to_list(bc, 3) if bc else ["p"] * 3
+        bc = self._expand_to_row(int(bc), 3) 
 
         # Initialize Grid1d components for each axis.
         self.comp = []
-        for axis in range(3):  # Assuming axis indices are 0, 1, 2.
-            self.comp.append(Grid1d(axis, unit, lprim_cell[axis], Npml[axis], bc[axis]))
+        for w in Axis.elems():  # Assuming axis indices are 0, 1, 2.
+            self.comp.append(Grid1d(w, unit, lprim_cell[int(w)], Npml[int(w)], bc[int(w)]))
 
     @property
     def unit(self):
@@ -127,17 +127,27 @@ class Grid3d:
             '"lprim_cell" should be a list of 3 arrays.'
 
     def _expand_to_matrix(self, data, rows, cols):
-        if np.isscalar(data):
-            return np.full((rows, cols), data)
-        elif isinstance(data, (list, np.ndarray)) and len(data) == rows:
-            return np.array([np.full(cols, val) if np.isscalar(val) else val for val in data])
+        if np.isscalar(data) or (torch.is_tensor(data) and data.numel() == 1):
+            return np.full((rows, cols), data) if isinstance(data, (int, float)) else torch.full((rows, cols), data.item())
+        elif isinstance(data, (list, np.ndarray, torch.Tensor)) and data.ndim==1:
+            assert len(data) == rows
+            if isinstance(data, list):
+                data = np.array(data)
+            # if data.ndim == 1:
+            data = data[:, None] if data.shape[0] == rows else data[None, :]
+            return np.tile(data, (1, cols))
+        elif isinstance(data, (np.ndarray, torch.Tensor)) and data.shape == (rows, cols):
+            return data
         else:
             raise ValueError(f'"data" should be scalar, list of length {rows}, or {rows}x{cols} array.')
 
-    def _expand_to_list(self, data, length):
-        if np.isscalar(data):
-            return [data] * length
-        elif isinstance(data, (list, np.ndarray)) and len(data) == length:
+    def _expand_to_row(self, data, length):
+        if np.isscalar(data) or (torch.is_tensor(data) and data.numel() == 1):
+            return np.full((1, length), data) if isinstance(data, (int, float)) else torch.full((1, length), data.item())
+        elif isinstance(data, (list, np.ndarray, torch.Tensor)) and data.ndim==1:
+            assert len(data) == length
+            if isinstance(data, list):
+                data = np.array(data)
             return data
         else:
             raise ValueError(f'"data" should be scalar or list of length {length}.')

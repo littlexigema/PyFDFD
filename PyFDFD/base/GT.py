@@ -2,10 +2,28 @@ from enum import Enum
 
 class GT(Enum):
     """
-    GT is the enumeration class for the types of grids (primary and dual).
+    GT is the enumeration class for the types of grids (PRIMary and dual).
     """
-    prim = 'primary'
-    dual = 'dual'
+    PRIM = (0, 'primary')
+    DUAL = (1, 'dual')
+
+    def __new__(cls, value, description):
+        obj = object.__new__(cls)
+        obj._value_ = value
+        obj.description = description
+        return obj
+
+    def __str__(self):
+        return f'{self.name} ({self.description})'
+
+    def __repr__(self):
+        return f'{self.name} ({self.description})'
+
+    def __int__(self):
+        return self.value
+
+    def __index__(self):
+        return self.value
 
     @staticmethod
     def elems(ind=None):
@@ -17,6 +35,16 @@ class GT(Enum):
             return elems[ind]
         return elems
 
+    def alter(self):
+        """
+        Alters between GT.PRIM and GT.dual.
+        """
+        if self == GT.PRIM:
+            return GT.DUAL
+        elif self == GT.DUAL:
+            return GT.PRIM
+        return None
+
     @staticmethod
     def count():
         """
@@ -24,24 +52,16 @@ class GT(Enum):
         """
         return len(GT.elems())
 
-    def alter(self):
-        """
-        Alters between GT.prim and GT.dual.
-        """
-        if self == GT.prim:
-            return GT.dual
-        elif self == GT.dual:
-            return GT.prim
-        return None
-
 # Example usage
 if __name__ == "__main__":
-    print(f"# of instances of GT: {GT.count()}")
-    for grid in GT.elems():
-        print(f"GT.{grid.name} corresponds to {grid.value}")
-    
-    # Test alter method
-    grid = GT.prim
-    print(f"Alter of {grid.name}: {grid.alter().name}")
-    grid = GT.dual
-    print(f"Alter of {grid.name}: {grid.alter().name}")
+    lst = ['primary', 'dual']
+    print(lst[GT.PRIM])  # 自动转换为整数
+    print(GT.PRIM)  # 输出: PRIM (PRIMary)
+    print(int(GT.PRIM))  # 输出: 0
+    print(repr(GT.PRIM))  # 输出: PRIM (PRIMary)
+    print(GT.elems())  # 输出: [<GT.PRIM: 0>, <GT.dual: 1>]
+    for gt in GT.elems():
+        print(f"GT.{gt.name} corresponds to {gt.value}")
+
+    # Test cyclic permutation
+    print(GT.PRIM.alter())  # 输出: dual (dual)

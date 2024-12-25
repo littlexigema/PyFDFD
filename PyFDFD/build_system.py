@@ -38,12 +38,17 @@ def build_system(m_unit,wvlen,grid_type,pml,domain,Lpml):
     shape_array,sshape_array = None,None#没有实例化的shape
     src_array = list()
     withuniformgrid = True
+    isepsgiven = False
     [lprim, Npml] = generate_lprim3d(domain, Lpml, list(), src_array, withuniformgrid)
 
     unit = PhysUnit(m_unit)
     osc = Oscillation(wvlen,unit)
 
     grid3d = Grid3d(osc.unit, lprim, Npml, BC.P)
+    if not isepsgiven:
+        eps_node_cell, mu_node_cell = assign_material_node(grid3d)
+        eps_cell = np.ones(grid3d.lall[GT.PRIM])
+    
 
     return M_s, A, b
 

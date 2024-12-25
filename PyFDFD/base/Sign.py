@@ -4,13 +4,31 @@ class Sign(Enum):
     """
     Sign is an enumeration class for negative and positive signs.
     """
-    N = 'negative'
-    P = 'positive'
+    N = (0, 'negative')
+    P = (1, 'positive')
+
+    def __new__(cls, value, description):
+        obj = object.__new__(cls)
+        obj._value_ = value
+        obj.description = description
+        return obj
+
+    def __str__(self):
+        return f'{self.name} ({self.description})'
+
+    def __repr__(self):
+        return f'{self.name} ({self.description})'
+
+    def __int__(self):
+        return self.value
+
+    def __index__(self):
+        return self.value
 
     @staticmethod
-    def elems(ind=None):
+    def elems(ind = None):
         """
-        Returns all elements of the Sign enumeration.
+        Returns all the elements of the Sign enumeration.
         """
         elems = list(Sign)
         if ind is not None:
@@ -24,27 +42,13 @@ class Sign(Enum):
         """
         return len(Sign.elems())
 
-    def alter(self):
-        """
-        Alters the sign: returns positive if negative, and negative if positive.
-        """
-        if self == Sign.N:
-            return Sign.P
-        elif self == Sign.P:
-            return Sign.N
-        return None
-
 # Example usage
 if __name__ == "__main__":
-    print(Sign.N.value)
-    # lst = [1,2,3]
-    # for w in 
-    # print(f"# of instances of Sign: {Sign.count()}")
-    # for sign in Sign.elems():
-    #     print(f"Sign.{sign.name} corresponds to {sign.value}")
-    
-    # # Test alter method
-    # sign = Sign.N
-    # print(f"Alter of {sign.name}: {sign.alter().name}")
-    # sign = Sign.P
-    # print(f"Alter of {sign.name}: {sign.alter().name}")
+    lst = ['negative', 'positive']
+    print(lst[Sign.N])  # 自动转换为整数
+    print(Sign.N)  # 输出: N (negative)
+    print(int(Sign.N))  # 输出: 0
+    print(repr(Sign.N))  # 输出: N (negative)
+    print(Sign.elems())  # 输出: [<Sign.N: 0>, <Sign.P: 1>]
+    for sign in Sign.elems():
+        print(f"Sign.{sign.name} corresponds to {sign.value}")

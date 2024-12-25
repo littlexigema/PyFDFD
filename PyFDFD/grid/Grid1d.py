@@ -16,7 +16,7 @@ class Grid1d:
         self.unit = unit
         self.unitvalue = unit.value([PhysQ.L])
 
-        assert isinstance(Npml_array, np.ndarray) and Npml_array.shape == (1, Sign.count), \
+        assert isinstance(Npml_array, np.ndarray) and Npml_array.shape == (1, Sign.count()), \
             f'"Npml" should be a length-{Sign.count} row vector with integer elements.'
         self.Npml = Npml_array
 
@@ -35,7 +35,7 @@ class Grid1d:
         self.ldual = np.empty(self.N + 1)
         self.ldual[1:] = (self.lprim[:-1] + self.lprim[1:]) / 2
 
-        if self.bc == BC.PERIODIC:
+        if self.bc == BC.P:
             self.ldual[0] = self.ldual[-1] - (self.lprim[-1] - self.lprim[0])
             self.ldual_ext = self.ldual[1] + (self.lprim[-1] - self.lprim[0])
         else:
@@ -47,8 +47,8 @@ class Grid1d:
         self.dl = [np.diff(self.ldual), np.diff(self.lprim)]
 
         # Set lpml, Lpml, and center.
-        self.lpml = [self.lprim[self.Npml[Sign.NEG]], self.lprim[-self.Npml[Sign.POS] - 1]]
-        self.Lpml = [self.lpml[Sign.NEG] - self.lprim[0], self.lprim[-1] - self.lpml[Sign.POS]]
+        self.lpml = [self.lprim[self.Npml[Sign.N]], self.lprim[-self.Npml[Sign.P] - 1]]
+        self.Lpml = [self.lpml[Sign.N] - self.lprim[0], self.lprim[-1] - self.lpml[Sign.P]]
         self.center = np.mean(self.lpml)
 
         # Initialize kBloch
