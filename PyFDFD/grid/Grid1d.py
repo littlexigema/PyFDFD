@@ -1,5 +1,13 @@
+from PyFDFD.base.Axis import Axis
+# from PyFDFD.base.PhysC import PhysC
+# from PyFDFD.base.PhysQ import PhysQ
+from PyFDFD.base.PhysUnit import PhysUnit,PhysC,PhysQ
+from PyFDFD.base.BC import BC
+from PyFDFD.base.Sign import Sign
+from PyFDFD.base.GT import GT
+# PhysQ,PhysUnit,BC,Sign,GT
 import numpy as np
-from PyFDFD.base import Axis,PhysC,PhysQ,PhysUnit,BC,Sign,GT
+import torch
 
 class Grid1d:
     """
@@ -14,16 +22,22 @@ class Grid1d:
 
         assert isinstance(unit, PhysUnit), '"unit" should be an instance of PhysUnit.'
         self.unit = unit
-        self.unitvalue = unit.value([PhysQ.L])
+        self.unitvalue = unit.value(PhysQ.L)
 
-        assert isinstance(Npml_array, np.ndarray) and Npml_array.shape == (1, Sign.count()), \
-            f'"Npml" should be a length-{Sign.count} row vector with integer elements.'
+        # if isinstance(Npml_array, np.ndarray):
+        #     assert Npml_array.numel() == Sign.count(), \
+        #     f'"Npml" should be a length-{Sign.count()} row vector with integer elements.'
+        if isinstance(Npml_array, torch.Tensor):
+            assert Npml_array.numel() == Sign.count(), \
+            f'"Npml" should be a length-{Sign.count()} row vector with integer elements.'
+        else:
+            raise TypeError('"Npml_array" should be either a numpy array or a torch tensor.')
         self.Npml = Npml_array
 
         assert isinstance(bc, BC), '"bc" should be an instance of BC.'
         self.bc = bc
 
-        assert isinstance(lprim_array, np.ndarray) and len(lprim_array.shape) == 1, \
+        assert isinstance(lprim_array, torch.Tensor) and len(lprim_array.shape) == 1, \
             '"lprim_array" should be a row vector with real elements.'
 
         # Set N and L.
@@ -32,7 +46,7 @@ class Grid1d:
         self.L = self.lprim[-1] - self.lprim[0]
 
         # Set loc and dl.
-        self.ldual = np.empty(self.N + 1)
+        self.ldual = torch.empty(self.N + 1)
         self.ldual[1:] = (self.lprim[:-1] + self.lprim[1:]) / 2
 
         if self.bc == BC.P:
@@ -43,13 +57,13 @@ class Grid1d:
             self.ldual_ext = self.lprim[-1] + (self.lprim[-1] - self.ldual[-1])
 
         self.l = [self.lprim[:-1], self.ldual[1:]]
-        self.lghost = [self.lprim[-1], self.ldual[0]]
-        self.dl = [np.diff(self.ldual), np.diff(self.lprim)]
+        self.lghost = [self.lprim[-1].item(), self.ldual[0].item()]
+        self.dl = [torch.diff(self.ldual), torch.diff(self.lprim)]
 
         # Set lpml, Lpml, and center.
-        self.lpml = [self.lprim[self.Npml[Sign.N]], self.lprim[-self.Npml[Sign.P] - 1]]
-        self.Lpml = [self.lpml[Sign.N] - self.lprim[0], self.lprim[-1] - self.lpml[Sign.P]]
-        self.center = np.mean(self.lpml)
+        self.lpml = [self.lprim[self.Npml[Sign.N]].item(), self.lprim[-self.Npml[Sign.P] - 1].item()]
+        self.Lpml = [(self.lpml[Sign.N] - self.lprim[0]).item(), (self.lprim[-1] - self.lpml[Sign.P]).item()]
+        self.center = torch.mean(torch.tensor(self.lpml))
 
         # Initialize kBloch
         self.kBloch = 0
@@ -57,15 +71,15 @@ class Grid1d:
     @property
     def lg(self):
         return [
-            np.append(self.l[GT.PRIM], self.lghost[GT.PRIM]),
-            np.insert(self.l[GT.DUAL], 0, self.lghost[GT.DUAL])
+            torch.append(self.l[GT.PRIM], self.lghost[GT.PRIM]),
+            torch.insert(self.l[GT.DUAL], 0, self.lghost[GT.DUAL])
         ]
 
     @property
     def lall(self):
         return [
             self.lg[GT.PRIM],
-            np.append(self.lg[GT.DUAL], self.ldual_ext)
+            torch.append(self.lg[GT.DUAL], self.ldual_ext)
         ]
 
     @property
@@ -81,7 +95,7 @@ class Grid1d:
         # self.kBloch = blochSrc.kBloch(self.axis)
 
     def contains(self, l):
-        assert np.issubdtype(l.dtype, np.floating), '"l" should be an array with real elements.'
+        # assert np.issubdtype(l.dtype, np.floating), '"l" should be an array with real elements.'
         return (l >= self.lall[GT.PRIM][0]) & (l <= self.lall[GT.PRIM][-1])
 
     def bound_plot(self, withpml):
@@ -102,7 +116,7 @@ class Grid1d:
 
         if g == GT.DUAL and withinterp:
             lbound = self.bound_plot(withpml)
-            lplot = np.concatenate([[lbound[0]], lplot, [lbound[-1]]])
+            lplot = torch.concatenate([[lbound[0]], lplot, [lbound[-1]]])
 
         return lplot
 

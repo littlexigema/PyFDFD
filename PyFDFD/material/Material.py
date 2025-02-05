@@ -65,6 +65,7 @@ class Material:
             return True
         return not (self.name == other.name and self.color == other.color and np.allclose(self.eps, other.eps) and np.allclose(self.mu, other.mu))
 
+
 # Example usage
 if __name__ == "__main__":
     vacuum = Material('vacuum', 'none', 1.0)

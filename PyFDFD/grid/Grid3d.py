@@ -1,7 +1,6 @@
 from PyFDFD.base.PhysUnit import PhysUnit
 from PyFDFD.grid.Grid1d import Grid1d
 from PyFDFD.base.Axis import Axis
-import numpy as np
 import torch
 
 class Grid3d:
@@ -22,7 +21,8 @@ class Grid3d:
         self._validate_unit(unit)
         self._validate_lprim_cell(lprim_cell)
         Npml = self._expand_to_matrix(Npml, 3, 2)  # Assuming 3 axes and 2 signs.
-        bc = self._expand_to_row(int(bc), 3) 
+        # bc = self._expand_to_row(int(bc), 3) 
+        bc = [bc for _ in range(Axis.count())]
 
         # Initialize Grid1d components for each axis.
         self.comp = []
@@ -51,7 +51,7 @@ class Grid3d:
 
     @property
     def bound(self):
-        return np.array([comp.bound for comp in self.comp])
+        return torch.tensor([comp.bound for comp in self.comp])
 
     @property
     def dl(self):
@@ -63,7 +63,7 @@ class Grid3d:
 
     @property
     def N(self):
-        return np.array([comp.N for comp in self.comp])
+        return torch.tensor([comp.N for comp in self.comp])
 
     @property
     def Ncell(self):
@@ -71,27 +71,27 @@ class Grid3d:
 
     @property
     def Ntot(self):
-        return np.prod(self.N)
+        return torch.prod(self.N)
 
     @property
     def L(self):
-        return np.array([comp.L for comp in self.comp])
+        return torch.tensor([comp.L for comp in self.comp])
 
     @property
     def Npml(self):
-        return np.array([comp.Npml for comp in self.comp])
+        return torch.tensor([comp.Npml for comp in self.comp])
 
     @property
     def lpml(self):
-        return np.array([comp.lpml for comp in self.comp])
+        return torch.tensor([comp.lpml for comp in self.comp])
 
     @property
     def Lpml(self):
-        return np.array([comp.Lpml for comp in self.comp])
+        return torch.tensor([comp.Lpml for comp in self.comp])
 
     @property
     def center(self):
-        return np.array([comp.center for comp in self.comp])
+        return torch.tensor([comp.center for comp in self.comp])
 
     def set_kBloch(self, plane_src):
         for comp in self.comp:
@@ -99,7 +99,7 @@ class Grid3d:
 
     @property
     def kBloch(self):
-        return np.array([comp.kBloch for comp in self.comp])
+        return torch.tensor([comp.kBloch for comp in self.comp])
 
     def contains(self, x, y, z):
         """
@@ -114,7 +114,7 @@ class Grid3d:
             array: Boolean array indicating whether each point is inside the grid.
         """
         loc = [x, y, z]
-        truth = np.ones_like(x, dtype=bool)
+        truth = torch.ones_like(x, dtype=bool)
         for axis, comp in enumerate(self.comp):
             truth &= comp.contains(loc[axis])
         return truth
@@ -127,17 +127,15 @@ class Grid3d:
             '"lprim_cell" should be a list of 3 arrays.'
 
     def _expand_to_matrix(self, data, rows, cols):
-        if np.isscalar(data) or (torch.is_tensor(data) and data.numel() == 1):
-            return np.full((rows, cols), data) if isinstance(data, (int, float)) else torch.full((rows, cols), data.item())
-        elif isinstance(data, (list, np.ndarray, torch.Tensor)) and data.ndim==1:
+        if (torch.is_tensor(data) and data.numel() == 1):
+            return torch.full((rows, cols), data.item(),dtype = torch.long)
+        elif isinstance(data, (list, torch.Tensor)) and data.ndim==1:
             assert len(data) == rows
-            if isinstance(data, list):
-                data = np.array(data)
             # if data.ndim == 1:
             data = data[:, None] if data.shape[0] == rows else data[None, :]
-            return np.tile(data, (1, cols))
-        elif isinstance(data, (np.ndarray, torch.Tensor)) and data.shape == (rows, cols):
-            return data
+            return torch.tile(data, (1, cols),dtype = torch)
+        elif isinstance(data, (torch.Tensor)) and data.shape == (rows, cols):
+            return data.to(torch.long)
         else:
             raise ValueError(f'"data" should be scalar, list of length {rows}, or {rows}x{cols} array.')
 
@@ -147,7 +145,7 @@ class Grid3d:
         elif isinstance(data, (list, np.ndarray, torch.Tensor)) and data.ndim==1:
             assert len(data) == length
             if isinstance(data, list):
-                data = np.array(data)
+                data = torch.tensor(data)
             return data
         else:
             raise ValueError(f'"data" should be scalar or list of length {length}.')

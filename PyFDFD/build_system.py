@@ -1,5 +1,8 @@
+from PyFDFD.material.assign_material_node import assign_material_node
 from PyFDFD.grid.generate_lprim3d import generate_lprim3d
 from PyFDFD.base import PML,EquationType,FT,GT
+from PyFDFD.material.Material import Material
+from PyFDFD.io.EMObject import EMObject
 from PyFDFD.base.Oscillation import Oscillation
 from PyFDFD.grid.Grid3d import Grid3d
 from PyFDFD.base.PhysUnit import PhysUnit
@@ -8,7 +11,7 @@ from PyFDFD.base.BC import BC
 from config import *
 import numpy as np
 
-def build_system(m_unit,wvlen,grid_type,pml,domain,Lpml):
+def build_system(m_unit,wvlen,grid_type,pml,domain,Lpml,emobj:EMObject):
     """
         function [osc, grid3d, s_factor_cell, eps_cell, mu_cell, J_cell, M_cell, Ms, ...
     obj_array, src_array, mat_array, eps_node, mu_node, isiso] = csi_build_system(varargin)
@@ -46,7 +49,7 @@ def build_system(m_unit,wvlen,grid_type,pml,domain,Lpml):
 
     grid3d = Grid3d(osc.unit, lprim, Npml, BC.P)
     if not isepsgiven:
-        eps_node_cell, mu_node_cell = assign_material_node(grid3d)
+        eps_node_cell, mu_node_cell = assign_material_node(grid3d,[emobj],None,None)
         eps_cell = np.ones(grid3d.lall[GT.PRIM])
     
 

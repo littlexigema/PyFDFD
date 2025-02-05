@@ -13,7 +13,7 @@ def generate_lprim3d(domain:Box, Lpml, shape_array=list, src_array=list, withuni
     assert len(Lpml)==Axis.count(),RuntimeError()
     Lpml = torch.tensor([Lpml for i in range(Sign.count())]).T
     lprim_cell = [[] for w in range(Axis.count())]#torch.empty(1,Axis.count())
-    Npml = torch.ones(Axis.count(),Sign.count())*torch.nan
+    Npml = torch.ones(Axis.count(),Sign.count(),)#在这里不乘torch.nan,使之维持torch.int64情况暂时不考虑withuniform=True的可能情况
     # withuniform = True#for test
     if withuniform:
         for w in range(Axis.count()):
