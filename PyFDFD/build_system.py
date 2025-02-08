@@ -48,8 +48,9 @@ def build_system(m_unit,wvlen,grid_type,pml,domain,Lpml,emobj:EMObject):
     osc = Oscillation(wvlen,unit)
 
     grid3d = Grid3d(osc.unit, lprim, Npml, BC.P)
+    #目前当作isepsgiven没有给定，false
     if not isepsgiven:
-        eps_node_cell, mu_node_cell = assign_material_node(grid3d,[emobj],None,None)
+        eps_node_cell, mu_node_cell = assign_material_node(grid3d,emobj,None,None)
         eps_cell = np.ones(grid3d.lall[GT.PRIM])
     
 

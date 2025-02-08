@@ -1,6 +1,7 @@
 from PyFDFD.base.PhysUnit import PhysUnit
 from PyFDFD.grid.Grid1d import Grid1d
 from PyFDFD.base.Axis import Axis
+from PyFDFD.base.GT import GT
 import torch
 
 class Grid3d:
@@ -39,7 +40,12 @@ class Grid3d:
 
     @property
     def l(self):
-        return [[comp.l[g] for g in range(2)] for comp in self.comp]  # Assuming 2 grid types: primary and dual.
+        l = [[None]*GT.count() for _ in range(Axis.count())]
+        for w in Axis.elems():
+            for g in GT.elems():
+                l[w][g] = self.comp[w].l[g]
+        return l
+        # return [[comp.l[g] for g in range(2)] for comp in self.comp]  # Assuming 2 grid types: primary and dual.
 
     @property
     def lg(self):

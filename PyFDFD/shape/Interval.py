@@ -1,4 +1,4 @@
-import numpy as np
+import torch
 
 class Interval:
     """
@@ -13,10 +13,10 @@ class Interval:
         lprim_array (array-like): A non-empty row vector with real elements, used to generate the grid.
         dl_max (float): Maximum allowed grid spacing. Must be positive.
         """
-        if not (isinstance(lprim_array, (list, np.ndarray)) and len(lprim_array) > 0):
+        if not (isinstance(lprim_array, (list, torch.Tensor)) and len(lprim_array) > 0):
             raise ValueError("'lprim_array' should be a non-empty list or numpy array with real elements.")
 
-        self.lprim = np.unique(np.asarray(lprim_array))  # Sort and remove duplicates
+        self.lprim = torch.unique(torch.asarray(lprim_array))  # Sort and remove duplicates
 
         self.bound = [self.lprim.min(), self.lprim.max()]  # Set bounds
 
@@ -48,8 +48,8 @@ class Interval:
             - truth (numpy.ndarray): Boolean array indicating whether each value is within the bounds.
             - distance (numpy.ndarray): Distance of each value from the nearest bound.
         """
-        val = np.asarray(val)
-        if not np.issubdtype(val.dtype, np.floating):
+        val = torch.asarray(val)
+        if not torch.issubdtype(val.dtype, torch.floating):
             raise ValueError("'val' should be an array with real elements.")
 
         bn, bp = self.bound  # Lower and upper bounds
@@ -58,6 +58,6 @@ class Interval:
 
         # distance = None
         # if truth.size > 0:
-        distance = np.minimum(np.abs(val - bn), np.abs(val - bp))
+        distance = torch.minimum(torch.abs(val - bn), torch.abs(val - bp))
 
         return truth, distance
