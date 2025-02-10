@@ -58,7 +58,7 @@ class Shape:
     def bound(self):
         bound = torch.empty((Axis.count(),Sign.count()))
         for w in range(Axis.count()):
-            bound[w,:] = self.interval[w].bound
+            bound[w,:] = torch.tensor(self.interval[w].bound)
         return bound
         
     @property

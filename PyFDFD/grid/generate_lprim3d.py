@@ -18,15 +18,15 @@ def generate_lprim3d(domain:Box, Lpml, shape_array=list, src_array=list, withuni
             dl_intended = domain.dl_max[w]
             # tmp = domain.L[w]
             # tmp = tmp/dl_intended
-            Nw = torch.round(domain.L[w]/dl_intended)
-            lprim = torch.linspace(domain.bound[w,0],domain.bound[w,1],Nw+1)
+            Nw = torch.round(domain.L[w]/dl_intended).to(torch.long)
+            lprim = torch.linspace(domain.bound[w,0].item(),domain.bound[w,1].item(),Nw+1)
             assert Nw>0
             dl_generate = lprim[1]-lprim[0]
             error_dl = (dl_generate-dl_intended)/dl_intended
             if abs(error_dl)>1e-9:
                 print(f"Maxwell:gridGen: grid vertex separation {dl_generate} in generated uniform grid "
               f"significantly differs from intended separation {dl_intended}: error is {error_dl * 100:.2f} percent.")
-            Npml[w,0] = (lprim<lprim[1]+Lpml[w,0]).sum()#sign.n
+            Npml[w,0] = (lprim<lprim[0]+Lpml[w,0]).sum()#sign.n
             Npml[w,1] = (lprim>lprim[-1]-Lpml[w,1]).sum()#sign.n
             lprim_cell.append(lprim)
     else:
@@ -77,5 +77,5 @@ def generate_lprim3d(domain:Box, Lpml, shape_array=list, src_array=list, withuni
             Npml[w, Sign.n] = np.sum(lprim < lprim[0] + Lpml[w, Sign.n])
             Npml[w, Sign.p] = np.sum(lprim > lprim[-1] - Lpml[w, Sign.p])
             lprim_cell[w] = lprim
-    return 0,0
-    # return lprim_cell, Npml
+    # return 0,0
+    return lprim_cell, Npml

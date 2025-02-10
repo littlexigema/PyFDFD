@@ -18,7 +18,7 @@ class Interval:
 
         self.lprim = torch.unique(torch.asarray(lprim_array))  # Sort and remove duplicates
 
-        self.bound = [self.lprim.min(), self.lprim.max()]  # Set bounds
+        self.bound = [self.lprim.min().item(), self.lprim.max().item()]  # Set bounds
 
         self.lprim = self.lprim.tolist()
 

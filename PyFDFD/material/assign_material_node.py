@@ -36,8 +36,8 @@ def assign_material_node(grid3d:Grid3d, object_array, eps_node_cell = None, mu_n
         shape = obj.shape
         material = obj.material
         for w in Axis.elems():
-            bn = shape.bound(w, Sign.N)
-            bp = shape.bound(w, Sign.P)
+            bn = shape.bound[w, Sign.N]
+            bp = shape.bound[w, Sign.P]
             in_idx = torch.searchsorted(ldual[w.value], bn, side='left')
             ip_idx = torch.searchsorted(ldual[w.value], bp, side='right') - 1
             ind[w.value] = slice(in_idx, ip_idx + 1)
