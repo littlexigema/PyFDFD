@@ -1,4 +1,6 @@
 from PyFDFD.material.assign_material_node import assign_material_node
+from PyFDFD.material.mean_material_node import mean_material_node
+from PyFDFD.io.generate_s_factor import generate_s_factor
 from PyFDFD.grid.generate_lprim3d import generate_lprim3d
 from PyFDFD.base import PML,EquationType,FT,GT
 from PyFDFD.material.Material import Material
@@ -9,7 +11,8 @@ from PyFDFD.base.PhysUnit import PhysUnit
 from PyFDFD.shape import Box
 from PyFDFD.base.BC import BC
 from config import *
-import numpy as np
+import math
+# import numpy as np
 
 def build_system(m_unit,wvlen,grid_type,pml,domain,Lpml,emobj:EMObject):
     """
@@ -48,10 +51,19 @@ def build_system(m_unit,wvlen,grid_type,pml,domain,Lpml,emobj:EMObject):
     osc = Oscillation(wvlen,unit)
 
     grid3d = Grid3d(osc.unit, lprim, Npml, BC.P)
+
+    #Set up the degree of the polynomial grading of the PML scale factors.
+    deg_pml = 4
+    #Set up the target reflection coefficient of the PML.
+    R_pml = math.exp(-16)
     #目前当作isepsgiven没有给定，false
     if not isepsgiven:
         eps_node_cell, mu_node_cell = assign_material_node(grid3d,emobj,None,None)
-        eps_cell = np.ones(grid3d.lall[GT.PRIM])
+        # eps_cell = np.ones(grid3d.lall[GT.PRIM])
+    eps_cell = mean_material_node(grid3d,ge,eps_node_cell)
+    mu_cell = mean_material_node(grid3d,ge,mu_node_cell)
+    #construct PML s-factors.
+    s_factor_cell = generate_s_factor(osc.in_omega0(), grid3d, deg_pml, R_pml)
     
 
     return M_s, A, b

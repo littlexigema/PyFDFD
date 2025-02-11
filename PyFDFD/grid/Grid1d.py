@@ -61,7 +61,7 @@ class Grid1d:
         self.dl = [torch.diff(self.ldual), torch.diff(self.lprim)]
 
         # Set lpml, Lpml, and center.
-        self.lpml = [self.lprim[self.Npml[Sign.N]].item(), self.lprim[self.Npml[Sign.P] - 1].item()]#prim网格除去pml的两端的index位置
+        self.lpml = [self.lprim[self.Npml[Sign.N]].item(), self.lprim[-self.Npml[Sign.P] - 1].item()]#prim网格除去pml的两端的index位置
         self.Lpml = [(self.lpml[Sign.N] - self.lprim[0]).item(), (self.lprim[-1] - self.lpml[Sign.P]).item()]#记录pml的厚度
         self.center = torch.mean(torch.tensor(self.lpml))
 

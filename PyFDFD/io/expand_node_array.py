@@ -1,7 +1,7 @@
 import torch
-from base.Axis import Axis
-from base.BC import BC
-from grid.Grid3d import Grid3d
+from ..base.Axis import Axis
+from ..base.BC import BC
+from ..grid.Grid3d import Grid3d
 
 def expand_node_array(grid3d: Grid3d, node_array: torch.Tensor) -> torch.Tensor:
     """
@@ -10,14 +10,14 @@ def expand_node_array(grid3d: Grid3d, node_array: torch.Tensor) -> torch.Tensor:
     for w in Axis.elems():
         ind_gn = [slice(None)] * 3
         ind_gp = [slice(None)] * 3
-        if grid3d.bc[w] == BC.p:
+        if grid3d.bc[w] == BC.P:
             ind_gn[w.value] = grid3d.N[w.value] - 1
             ind_gp[w.value] = 0
         else:
             ind_gn[w.value] = 0
             ind_gp[w.value] = grid3d.N[w.value] - 1
         
-        node_array = torch.cat((node_array[tuple(ind_gn)], node_array, node_array[tuple(ind_gp)]), dim=w.value)
+        node_array = torch.cat((node_array[tuple(ind_gn)].unsqueeze(int(w)), node_array, node_array[tuple(ind_gp)].unsqueeze(int(w))), dim=w.value)
     
     return node_array
 

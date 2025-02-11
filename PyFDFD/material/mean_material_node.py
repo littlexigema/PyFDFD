@@ -1,8 +1,8 @@
 import torch
-from base.Axis import Axis
-from base.GT import GT
-from base.Grid3d import Grid3d
-from expand_node_array import expand_node_array
+from ..base.Axis import Axis
+from ..base.GT import GT
+from ..grid.Grid3d import Grid3d
+from ..io.expand_node_array import expand_node_array
 
 def mean_material_node(grid3d: Grid3d, gt: GT, material_node: list) -> list:
     """
@@ -18,10 +18,10 @@ def mean_material_node(grid3d: Grid3d, gt: GT, material_node: list) -> list:
     for w in Axis.elems():
         material_node[w.value] = expand_node_array(grid3d, material_node[w.value])  # (Nx+2) x (Ny+2) x (Nz+2)
 
-    if gt == GT.prim:
+    if gt == GT.PRIM:
         # material parameters for fields on primary grid
         material_cell = arithmetic_mean_material_node(material_node)
-    else:  # gt == GT.dual
+    else:  # gt == GT.DUAL
         # material parameters for fields on dual grid
         material_cell = harmonic_mean_material_node(material_node)
 
