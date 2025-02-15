@@ -26,7 +26,7 @@ class Forward_model:
     def get_system_matrix(self,fre:Union[int,float]):
         _,wvlen = Field.get_lambda(fre)#离散波长
         omega = 2*pi/wvlen
-        M_s, A, b = build_system(Forward_model.m_unit,wvlen,GT.PRIM,None,self.domain,Field.Lpml,self.emobj)
+        M_s, A, b = build_system(Forward_model.m_unit,wvlen,self.domain,Field.Lpml,self.emobj)
 
 if __name__=="__main__":
     FWD = Forward_model()

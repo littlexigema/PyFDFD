@@ -1,24 +1,40 @@
 from enum import Enum
 
 class PML(Enum):
-    # 定义枚举类型
-    sc = "stretched-coordinate"
-    u = "uniaxial"
-    
+    """
+    PML is an enumeration class for the kinds of PML.
+    """
+    SC = ('stretched-coordinate')
+    U = ('uniaxial')
+
+    def __new__(cls, description):
+        obj = object.__new__(cls)
+        obj._value_ = len(cls.__members__)  # Automatically assign an integer value based on the order of definition
+        obj.description = description
+        return obj
+
+    def __str__(self):
+        return f'{self.name} ({self.description})'
+
+    def __repr__(self):
+        return f'{self.name} ({self.description})'
+
+    def __int__(self):
+        return self.value
+
+    def __index__(self):
+        return self.value
+
     @staticmethod
-    def elems(ind=None):
-        # 获取所有枚举项
-        elems = [PML.sc, PML.u]
-        if ind is not None:  # 如果传入了索引，则返回对应的元素
-            return elems[ind]
-        return elems
-    
+    def elems():
+        """
+        Returns all the elements of the PML enumeration.
+        """
+        return list(PML)
+
     @staticmethod
     def count():
-        # 返回枚举项的数量
+        """
+        Returns the count of PML elements.
+        """
         return len(PML.elems())
-
-# 示例用法
-print("所有枚举项:", PML.elems())  # 返回所有枚举项
-print("指定索引1的枚举项:", PML.elems(1))  # 返回指定索引的枚举项
-print("枚举项数量:", PML.count())  # 返回枚举项的数量
