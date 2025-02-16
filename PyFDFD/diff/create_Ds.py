@@ -1,11 +1,8 @@
 import torch
 from torch import sparse
-from base.Sign import Sign
-from base.Axis import Axis
-from base.GT import GT
-from base.BC import BC
+from ..base import Sign,Axis,GT,BC
 # from base.grid import Grid2d
-from grid.Grid3d import Grid3d
+from ..grid import Grid3d
 
 def create_Ds(s, ge, dl_factor_cell, gridnd):
     # Check arguments

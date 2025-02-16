@@ -1,9 +1,7 @@
 import torch
-from base.Axis import Axis
-from base.GT import GT
-from base.BC import BC
+from ..base import Axis,GT,BC
 # from base.Grid2d import Grid2d
-from grid.Grid3d import Grid3d
+from ..grid import Grid3d
 
 def create_masks(ge, gridnd):
     """

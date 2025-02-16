@@ -1,6 +1,6 @@
 import torch
 from torch import sparse
-from base.Axis import Axis
+from ..base import Axis
 # from base.Dir import Dir
 
 def create_Dw(w, N, f1, fg):

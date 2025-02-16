@@ -23,3 +23,4 @@ end
 后续可以使用[Lecture-4e-FDFD-Implementation.pdf](../Lecture-4e-FDFD-Implementation.pdf)改进网格计算(**maybe**)
 
 ## generate_lprim3d值只完成了withuniform=True情况的代码正确性验证
+## matlab中构建了两个domain，第一个是regSize区域，第二个是真正的逆问题求解区域，我们暂时只关注后者，因此config.py中没有regSize参数

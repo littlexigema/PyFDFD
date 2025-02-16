@@ -1,37 +1,34 @@
-from PyFDFD.material.assign_material_node import assign_material_node
-from PyFDFD.material.mean_material_node import mean_material_node
-from PyFDFD.io.generate_s_factor import generate_s_factor
-from PyFDFD.grid.generate_lprim3d import generate_lprim3d
-from PyFDFD.base import PML,EquationType,FT,GT
-from PyFDFD.material.Material import Material
-from PyFDFD.io.EMObject import EMObject
-from PyFDFD.base.Oscillation import Oscillation
-from PyFDFD.grid.Grid3d import Grid3d
-from PyFDFD.base.PhysUnit import PhysUnit
-from PyFDFD.io.expand_node_array import expand_node_array
-from PyFDFD.base.Axis import Axis
-from PyFDFD.base.PML import PML
+from PyFDFD.material import assign_material_node,Material,mean_material_node
+from PyFDFD.base import EquationType,GT,FT,Oscillation,PhysUnit,Axis,PML,BC
+from PyFDFD.diff import create_curls,create_Ds,create_Dw,create_masks
+from PyFDFD.io import generate_s_factor,EMObject,expand_node_array
+from PyFDFD.grid import generate_lprim3d,Grid3d
 from PyFDFD.shape import Box
-from PyFDFD.base.BC import BC
 from config import *
+import torch
 import math
 # import numpy as np
 
 def create_eqTM(eqtype,pml,omega,eps_ell,mu_cell,s_factor_cell,J_cell,M_cell,grid3d):
     N = grid3d.N
-    src_n,_ = J_cell.shape
+    if J_cell==None:
+        src_n = 0
+    elif isinstance(J_cell, torch.Tensor):
+        src_n,_ = J_cell.shape
+    else:
+        raise RuntimeError("J_cell should be a torch.Tensor or None.")
     if src_n == 0:
         src_n = 1
     r = reordering_indices(Axis.count(), N)
     # Construct curls
     dl_factor_cell = [];
-    if pml == PML.sc:
+    if pml == PML.SC:
         dl_factor_cell = s_factor_cell
 
     ge = eqtype.ge
     [Ce, Cm] = create_curls(ge, dl_factor_cell, grid3d)
 
-def reordering_indices(dof, N):
+def reordering_indices(dof:int, N:int):
     """
     Generate indices to reorder the elements of matrices and vectors to reduce the
     bandwidth of the Maxwell operator matrix.
@@ -46,15 +43,26 @@ def reordering_indices(dof, N):
     # Check arguments
     if not isinstance(dof, int) or dof <= 0:
         raise ValueError('"dof" should be positive integer.')
-    if not isinstance(N, (list, np.ndarray)) or not all(isinstance(n, int) for n in N):
+    if isinstance(N, torch.Tensor):
+        N = N.to(torch.long).tolist()
+    elif isinstance(N,list):
+        pass
+    else:
         raise ValueError('"N" should be row vector with integer elements.')
+    # if not isinstance(N, (list, torch.Tensor)) or not all(isinstance(n, int) for n in N):
+    #     raise ValueError('"N" should be row vector with integer elements.')
     
     # Generate indices
-    r = np.arange(1, dof * np.prod(N) + 1)
-    r = r.reshape(np.prod(N), dof)
-    r = r.T
-    r = r.flatten()
-    
+    r = torch.arange(1, dof * math.prod(N) + 1).resize(dof, math.prod(N))
+    """
+    r = reshape(r, prod(N), dof);
+    r = r.';
+    与line67等价
+    """
+    r = r.T.flatten()
+    """
+    r.T.flatten()与matlabr = r(:);展开方式等价
+    """
     return r
 
 def build_system(m_unit,wvlen,domain,Lpml,emobj:EMObject):

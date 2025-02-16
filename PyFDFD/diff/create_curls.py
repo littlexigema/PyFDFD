@@ -1,7 +1,5 @@
-from base.Sign import Sign
-from base.GT import GT
-from base.Axis import Axis
-from diff.create_Ds import create_Ds
+from ..base import Sign,GT,Axis
+from ..diff.create_Ds import create_Ds
 from torch import sparse
 import torch
 
@@ -13,8 +11,8 @@ def create_curls(ge, dl_factor_cell, grid3d):
     # chkarg(isinstance(grid3d, Grid3d), '"grid3d" should be instance of Grid3d.')
 
     # Create Df and Db
-    Df = create_Ds(Sign.p, ge, dl_factor_cell, grid3d)  # GT.elems(Sign.p) GT.dual, forward
-    Db = create_Ds(Sign.n, ge, dl_factor_cell, grid3d)  # GT.elems(Sign.n) GT.prim, backward
+    Df = create_Ds(Sign.P, ge, dl_factor_cell, grid3d)  # GT.elems(Sign.p) GT.dual, forward
+    Db = create_Ds(Sign.N, ge, dl_factor_cell, grid3d)  # GT.elems(Sign.n) GT.prim, backward
 
     # Create mask matrices
     ind_Mp, ind_Md = create_masks(ge, grid3d)
