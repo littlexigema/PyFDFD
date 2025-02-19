@@ -19,7 +19,7 @@ def create_eqTM(eqtype,pml,omega,eps_ell,mu_cell,s_factor_cell,J_cell,M_cell,gri
         raise RuntimeError("J_cell should be a torch.Tensor or None.")
     if src_n == 0:
         src_n = 1
-    r = reordering_indices(Axis.count(), N)
+    r = reordering_indices(Axis.count(), N)#后面做测试用
     # Construct curls
     dl_factor_cell = [];
     if pml == PML.SC:
