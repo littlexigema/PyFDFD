@@ -82,15 +82,16 @@ def create_Dw(w:Axis, N:torch.Tensor, f1, fg):
     col_ind_next = torch.arange(M).reshape(torch.Size(N)[::-1]).squeeze()
     assert dim ==2, RuntimeError("N shoud be 2D tensor")
     # shift = torch.zeros_like(col_ind_next.shape, dtype=torch.int)
-    shifts, dims= -1, int(not(bool(w.value)^bool(0)))#w.value
-    col_ind_next = torch.roll(col_ind_next, shifts, dims)
+    shifts, dims= -1, w.value^1#w.value^1异或逻辑，同或int(not(bool(w.value)^bool(0)))#w.value
+    if dims<3:#0,1，见Readme.md解释
+        col_ind_next = torch.roll(col_ind_next, shifts, dims)
     
-    a_curr = torch.ones(N.tolist()).squeeze()
+    a_curr = torch.ones(torch.Size(N)[::-1]).squeeze()
     a_ind = [slice(None)]*dim
     a_ind[dims] = 0
     a_curr[tuple(a_ind)] = f1
 
-    a_next = torch.ones(N.tolist()).squeeze()
+    a_next = torch.ones(torch.Size(N)[::-1]).squeeze()
     a_ind = [slice(None)]*dim
     a_ind[dims] = N[w]-1
     a_next[tuple(a_ind)] = fg
@@ -108,7 +109,7 @@ def create_Dw(w:Axis, N:torch.Tensor, f1, fg):
     col_ind_next = reshape(1:M, N);
     与line78对应
     """
-    pass
+    return Dw
 
 def create_spdiag(diag_elements):
     # This function creates a sparse diagonal matrix from the provided diagonal elements.
