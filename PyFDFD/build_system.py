@@ -21,7 +21,7 @@ def create_eqTM(eqtype,pml,omega,eps_ell,mu_cell,s_factor_cell,J_cell,M_cell,gri
         src_n = 1
     r = reordering_indices(Axis.count(), N)#后面做测试用
     # Construct curls
-    dl_factor_cell = [];
+    dl_factor_cell = None
     if pml == PML.SC:
         dl_factor_cell = s_factor_cell
 

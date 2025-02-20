@@ -53,14 +53,17 @@ def create_Ds(s, ge, dl_factor_cell, gridnd):
             #line 54检查
 
     dl = [None] * v.count()
-    if dl_factor_cell is None:
-        dl = torch.meshgrid(*gridnd.dl[:, g])
+    if dl_factor_cell is None:#create_curl dl_factor_cell初始化为None
+        dl = torch.meshgrid(*gridnd.dl[:, g])#需要修改
     else:
-        dl_cell = mult_vec(dl_factor_cell[:, g], gridnd.dl[:, g])
-        dl = torch.meshgrid(*dl_cell)
+        # dl_cell = mult_vec(dl_factor_cell[:, g], gridnd.dl[:, g])
+        dl_cell = mult_vec(list(list(zip(*dl_factor_cell))[g]),list(list(zip(*gridnd.dl))[g]))
+        dl = list(torch.meshgrid(*dl_cell,indexing='ij'))
 
     for w in v.elems():
-        Ds_cell[w] = create_spdiag(dl[w]**-1) @ Ds_cell[w]
+        # assert 
+        Ds_cell[w] = (dl[w].T.flatten().reciprocal()).unsqueeze(1) * Ds_cell[w]
+        # Ds_cell[w] = create_spdiag(dl[w]**-1) @ Ds_cell[w]
 
     return Ds_cell
 
@@ -83,18 +86,19 @@ def create_Dw(w:Axis, N:torch.Tensor, f1, fg):
     assert dim ==2, RuntimeError("N shoud be 2D tensor")
     # shift = torch.zeros_like(col_ind_next.shape, dtype=torch.int)
     shifts, dims= -1, w.value^1#w.value^1异或逻辑，同或int(not(bool(w.value)^bool(0)))#w.value
+
+    a_curr = torch.ones(torch.Size(N)[::-1]).squeeze()
+    a_ind_curr = [slice(None)]*dim
+    a_next = torch.ones(torch.Size(N)[::-1]).squeeze()
+    a_ind_next = [slice(None)]*dim
     if dims<3:#0,1，见Readme.md解释
         col_ind_next = torch.roll(col_ind_next, shifts, dims)
+        a_ind_curr[dims] = 0
+        a_ind_next[dims] = N[w]-1
     
-    a_curr = torch.ones(torch.Size(N)[::-1]).squeeze()
-    a_ind = [slice(None)]*dim
-    a_ind[dims] = 0
-    a_curr[tuple(a_ind)] = f1
-
-    a_next = torch.ones(torch.Size(N)[::-1]).squeeze()
-    a_ind = [slice(None)]*dim
-    a_ind[dims] = N[w]-1
-    a_next[tuple(a_ind)] = fg
+    
+    a_curr[tuple(a_ind_curr)] = f1
+    a_next[tuple(a_ind_next)] = fg
 
     indices = torch.stack([row_ind.repeat(2), torch.cat([col_ind_curr, col_ind_next.view(-1)])])
     v = torch.cat([-a_curr.view(-1), a_next.view(-1)])
@@ -111,15 +115,30 @@ def create_Dw(w:Axis, N:torch.Tensor, f1, fg):
     """
     return Dw
 
-def create_spdiag(diag_elements):
+def create_spdiag(diag_elements:torch.Tensor):
     # This function creates a sparse diagonal matrix from the provided diagonal elements.
-    return sparse.diags(diag_elements)
+    # 将输入向量转换为一维张量
+    vec = diag_elements.view(-1)
+    n = vec.size(0)
+    
+    # 创建行索引和列索引
+    indices = torch.arange(n, dtype=torch.long).unsqueeze(0).repeat(2, 1)
+    
+    # 创建稀疏对角矩阵
+    D = torch.sparse_coo_tensor(indices, vec, (n, n))
+    return D
+    # return sparse.diags(diag_elements)
 
 def mult_vec(dl_factor_cell, dl):
     # This function multiplies the elements of dl_factor_cell with dl.
     # The implementation of this function is not provided in the original MATLAB code.
     # You need to implement this function based on your specific requirements.
-    pass
+    n = len(dl_factor_cell)
+    Prod_cell = [None] * n
+    for w in range(n):
+        assert dl_factor_cell[w].shape == dl[w].shape, RuntimeError("shape of dl_factor_cell and dl should be the same")
+        Prod_cell[w] = dl_factor_cell[w] * dl[w]#element-wise multiplication
+    return Prod_cell
 
 # Example usage
 # Assuming GT, Axis, Sign, Grid2d, Grid3d, create_Dw, and create_spdiag are defined elsewhere
