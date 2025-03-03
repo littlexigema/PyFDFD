@@ -12,41 +12,41 @@ def create_masks(ge, gridnd):
     # chkarg(isinstance(ge, GT), '"ge" should be instance of GT.')
     # chkarg(isinstance(gridnd, (Grid2d, Grid3d)), '"gridnd" should be instance of Grid2d or Grid3d.')
 
-    v = Axis.x
+    # v = Axis.x
     # if isinstance(gridnd, Grid2d):#实际运行中是grid3d
     #     v = Dir.h
 
     # Get the shape
     N = gridnd.N
     bc = gridnd.bc
-    ind = [slice(None)] * v.count()
+    ind = [slice(None)] * Axis.count()
 
     # Mask matrices
-    mask_p = [None] * v.count()
-    for w in v.elems():
-        mask = torch.zeros(N, dtype=torch.bool)
-        us = [u for u in v.elems() if u != w]
+    mask_p = [None] * Axis.count()
+    for w in Axis.elems():
+        mask = torch.zeros(N.tolist(), dtype=torch.bool).squeeze()
+        us = [u for u in Axis.elems() if u != w]
 
         for u in us:
-            if (ge == GT.prim and bc[u] == BC.e) or (ge == GT.dual and bc[u] == BC.m):
-                ind = [slice(None)] * v.count()
+            if (ge == GT.PRIM and bc[u] == BC.E) or (ge == GT.DUAL and bc[u] == BC.M):
+                ind = [slice(None)] * Axis.count()
                 ind[u] = 0
                 mask[tuple(ind)] = True
-        mask_p[w] = mask.flatten()
+        mask_p[w] = mask.flatten()#确实和matlab展开不一致，但后续使用mask_p得到的结果会是一样的
 
-    ind_Mp = torch.cat(mask_p).nonzero().flatten()
+    ind_Mp = torch.cat(mask_p).flatten()
 
-    mask_d = [None] * v.count()
-    for w in v.elems():
-        mask = torch.zeros(N, dtype=torch.bool)
+    mask_d = [None] * Axis.count()
+    for w in Axis.elems():
+        mask = torch.zeros(N.tolist(), dtype=torch.bool).squeeze()
 
-        if (ge == GT.prim and bc[w] == BC.e) or (ge == GT.dual and bc[w] == BC.m):
-            ind = [slice(None)] * v.count()
+        if (ge == GT.PRIM and bc[w] == BC.E) or (ge == GT.DUAL and bc[w] == BC.M):
+            ind = [slice(None)] * Axis.count()
             ind[w] = 0
             mask[tuple(ind)] = True
         mask_d[w] = mask.flatten()
 
-    ind_Md = torch.cat(mask_d).nonzero().flatten()
+    ind_Md = torch.cat(mask_d).flatten()
 
     return ind_Mp, ind_Md
 

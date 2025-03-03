@@ -11,7 +11,7 @@ def create_Ds(s, ge, dl_factor_cell, gridnd):
     # chkarg(isinstance(ge, GT), '"ge" should be instance of GT.')
     # chkarg(isinstance(gridnd, (Grid2d, Grid3d)), '"gridnd" should be instance of Grid2d or Grid3d.')
 
-    v = Axis.X
+    # v = Axis.X
     # if isinstance(gridnd, Grid2d):#实际运行中是grid3d
         # v = Dir.h
     # chkarg(dl_factor_cell is None or (isinstance(dl_factor_cell, list) and all(isinstance(cell, torch.Tensor) for cell in dl_factor_cell)), 
@@ -25,9 +25,9 @@ def create_Ds(s, ge, dl_factor_cell, gridnd):
     bc = gridnd.bc
 
     # Basic setup of Df and Db
-    Ds_cell = [None] * v.count()
+    Ds_cell = [None] * Axis.count()
     if s == Sign.P:  # Ds == Df
-        for w in v.elems():
+        for w in Axis.elems():
             f1 = 1
 
             if bc[w] == BC.P:
@@ -37,7 +37,7 @@ def create_Ds(s, ge, dl_factor_cell, gridnd):
 
             Ds_cell[w] = create_Dw(w, N, f1, fg)
     else:  # Ds == Db
-        for w in v.elems():
+        for w in Axis.elems():
             if (ge == GT.PRIM and bc[w] == BC.M) or (ge == GT.DUAL and bc[w] == BC.E):
                 f1 = 2  # symmetry of operator for this case is not implemented yet
             else:
@@ -52,7 +52,7 @@ def create_Ds(s, ge, dl_factor_cell, gridnd):
             Ds_cell[w] = -Ds_cell[w].conj().t()  # conjugate transpose rather than transpose (hence nonsymmetry for kBloch ~= 0)
             #line 54检查
 
-    dl = [None] * v.count()
+    dl = [None] * Axis.count()
     if dl_factor_cell is None:#create_curl dl_factor_cell初始化为None
         dl = torch.meshgrid(*gridnd.dl[:, g])#需要修改
     else:
@@ -60,7 +60,7 @@ def create_Ds(s, ge, dl_factor_cell, gridnd):
         dl_cell = mult_vec(list(list(zip(*dl_factor_cell))[g]),list(list(zip(*gridnd.dl))[g]))
         dl = list(torch.meshgrid(*dl_cell,indexing='ij'))
 
-    for w in v.elems():
+    for w in Axis.elems():
         # assert 
         Ds_cell[w] = (dl[w].T.flatten().reciprocal()).unsqueeze(1) * Ds_cell[w]
         # Ds_cell[w] = create_spdiag(dl[w]**-1) @ Ds_cell[w]

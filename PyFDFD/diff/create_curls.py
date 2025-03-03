@@ -1,5 +1,7 @@
 from ..base import Sign,GT,Axis
-from ..diff.create_Ds import create_Ds
+# from . import create_Ds,create_masks
+from .create_Ds import create_Ds
+from .create_masks import create_masks
 from torch import sparse
 import torch
 
@@ -18,26 +20,26 @@ def create_curls(ge, dl_factor_cell, grid3d):
     ind_Mp, ind_Md = create_masks(ge, grid3d)
 
     # Form curl matrices
-    M = torch.prod(torch.tensor(grid3d.N))
+    M = torch.prod(torch.tensor(grid3d.N)).item()
     Z = sparse.FloatTensor(M, M)
 
-    Cp = torch.cat([
-        torch.cat([Z, -Df[Axis.z], Df[Axis.y]], dim=1),
-        torch.cat([Df[Axis.z], Z, -Df[Axis.x]], dim=1),
-        torch.cat([-Df[Axis.y], Df[Axis.x], Z], dim=1)
+    Cp = torch.cat([#ind_Mp和Df,Db的展开方式需要保持一致
+        torch.cat([Z, -Df[Axis.Z], Df[Axis.Y]], dim=1),
+        torch.cat([Df[Axis.Z], Z, -Df[Axis.X]], dim=1),
+        torch.cat([-Df[Axis.Y], Df[Axis.X], Z], dim=1)
     ], dim=0)
     Cp[:, ind_Mp] = 0
     Cp[ind_Md, :] = 0
 
     Cd = torch.cat([
-        torch.cat([Z, -Db[Axis.z], Db[Axis.y]], dim=1),
-        torch.cat([Db[Axis.z], Z, -Db[Axis.x]], dim=1),
-        torch.cat([-Db[Axis.y], Db[Axis.x], Z], dim=1)
+        torch.cat([Z, -Db[Axis.Z], Db[Axis.Y]], dim=1),
+        torch.cat([Db[Axis.Z], Z, -Db[Axis.X]], dim=1),
+        torch.cat([-Db[Axis.Y], Db[Axis.X], Z], dim=1)
     ], dim=0)
     Cd[:, ind_Md] = 0
     Cd[ind_Mp, :] = 0
 
-    if ge == GT.prim:
+    if ge == GT.PRIM:
         Ce = Cp  # forward
         Cm = Cd  # backward
     else:  # ge == GT.dual
