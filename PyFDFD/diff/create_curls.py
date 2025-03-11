@@ -17,7 +17,7 @@ def create_curls(ge, dl_factor_cell, grid3d):
     Db = create_Ds(Sign.N, ge, dl_factor_cell, grid3d)  # GT.elems(Sign.n) GT.prim, backward
 
     # Create mask matrices
-    ind_Mp, ind_Md = create_masks(ge, grid3d)
+    # ind_Mp, ind_Md = create_masks(ge, grid3d)#目前ind_Mp和ind_Md全部内容为False
 
     # Form curl matrices
     M = torch.prod(torch.tensor(grid3d.N)).item()
@@ -28,16 +28,16 @@ def create_curls(ge, dl_factor_cell, grid3d):
         torch.cat([Df[Axis.Z], Z, -Df[Axis.X]], dim=1),
         torch.cat([-Df[Axis.Y], Df[Axis.X], Z], dim=1)
     ], dim=0)
-    Cp[:, ind_Mp] = 0
-    Cp[ind_Md, :] = 0
+    # Cp[:, ind_Mp] = 0
+    # Cp[ind_Md, :] = 0
 
     Cd = torch.cat([
         torch.cat([Z, -Db[Axis.Z], Db[Axis.Y]], dim=1),
         torch.cat([Db[Axis.Z], Z, -Db[Axis.X]], dim=1),
         torch.cat([-Db[Axis.Y], Db[Axis.X], Z], dim=1)
     ], dim=0)
-    Cd[:, ind_Md] = 0
-    Cd[ind_Mp, :] = 0
+    # Cd[:, ind_Md] = 0
+    # Cd[ind_Mp, :] = 0
 
     if ge == GT.PRIM:
         Ce = Cp  # forward

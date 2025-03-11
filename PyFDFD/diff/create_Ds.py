@@ -49,7 +49,8 @@ def create_Ds(s, ge, dl_factor_cell, gridnd):
                 fg = 0  # f1 = 1 or 2 takes care of the ghost point
 
             Ds_cell[w] = create_Dw(w, N, f1, fg)
-            Ds_cell[w] = -Ds_cell[w].conj().t()  # conjugate transpose rather than transpose (hence nonsymmetry for kBloch ~= 0)
+            if gridnd.kBloch[w] != 0:
+                Ds_cell[w] = -Ds_cell[w].conj().t()  # conjugate transpose rather than transpose (hence nonsymmetry for kBloch ~= 0)
             #line 54检查
 
     dl = [None] * Axis.count()
@@ -77,28 +78,30 @@ def create_Dw(w:Axis, N:torch.Tensor, f1, fg):
     # You need to implement this function based on your specific requirements.
     """
     在处理稀疏矩阵时较普通方法有优势
+    创建
     """
     dim = (N != 1).sum().item()
     M = math.prod(N)
     row_ind = torch.arange(M)
     col_ind_curr = torch.arange(M)
-    col_ind_next = torch.arange(M).reshape(torch.Size(N)[::-1]).squeeze()
+    col_ind_next = torch.arange(M).reshape(N.tolist()).squeeze()
     assert dim ==2, RuntimeError("N shoud be 2D tensor")
     # shift = torch.zeros_like(col_ind_next.shape, dtype=torch.int)
-    shifts, dims= -1, w.value^1#w.value^1异或逻辑，同或int(not(bool(w.value)^bool(0)))#w.value
+    # shifts, dims= -1, w.value^1#w.value^1异或逻辑，同或int(not(bool(w.value)^bool(0)))#w.value
+    shifts, dims = -1,w.value
 
-    a_curr = torch.ones(torch.Size(N)[::-1]).squeeze()
+    a_curr = torch.ones(N.tolist()).squeeze()
     a_ind_curr = [slice(None)]*dim
-    a_next = torch.ones(torch.Size(N)[::-1]).squeeze()
+    a_next = torch.ones(N.tolist()).squeeze()
     a_ind_next = [slice(None)]*dim
-    if dims<3:#0,1，见Readme.md解释
+    if dims<2:#0,1，见Readme.md解释
         col_ind_next = torch.roll(col_ind_next, shifts, dims)
         a_ind_curr[dims] = 0
         a_ind_next[dims] = N[w]-1
     
     
-    a_curr[tuple(a_ind_curr)] = f1
-    a_next[tuple(a_ind_next)] = fg
+    # a_curr[tuple(a_ind_curr)] = f1#不考虑这两种情况
+    # a_next[tuple(a_ind_next)] = fg
 
     indices = torch.stack([row_ind.repeat(2), torch.cat([col_ind_curr, col_ind_next.view(-1)])])
     v = torch.cat([-a_curr.view(-1), a_next.view(-1)])

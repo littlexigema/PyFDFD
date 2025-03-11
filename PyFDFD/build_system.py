@@ -9,7 +9,7 @@ import torch
 import math
 # import numpy as np
 
-def create_eqTM(eqtype,pml,omega,eps_ell,mu_cell,s_factor_cell,J_cell,M_cell,grid3d):
+def create_eqTM(eqtype,pml,omega,eps_cell,mu_cell,s_factor_cell,J_cell,M_cell,grid3d):
     N = grid3d.N
     if J_cell==None:
         src_n = 0
@@ -26,7 +26,11 @@ def create_eqTM(eqtype,pml,omega,eps_ell,mu_cell,s_factor_cell,J_cell,M_cell,gri
         dl_factor_cell = s_factor_cell
 
     ge = eqtype.ge
-    [Ce, Cm] = create_curls(ge, dl_factor_cell, grid3d)
+    Ce, Cm = create_curls(ge, dl_factor_cell, grid3d)
+    
+    if pml == PML.U:
+        pass
+    
 
 def reordering_indices(dof:int, N:int):
     """
@@ -117,23 +121,23 @@ def build_system(m_unit,wvlen,domain,Lpml,emobj:EMObject):
     if not isepsgiven:
         eps_node_cell, mu_node_cell = assign_material_node(grid3d,emobj,None,None)
         # eps_cell = np.ones(grid3d.lall[GT.PRIM])
-    eps_cell = mean_material_node(grid3d,eqtype.ge,eps_node_cell)
+    eps_cell = mean_material_node(grid3d,eqtype.ge,eps_node_cell)#不让mean_material_node内部对material_node改变影响外部变量
     mu_cell = mean_material_node(grid3d,eqtype.ge,mu_node_cell)
     #construct PML s-factors.
     s_factor_cell = generate_s_factor(osc.in_omega0(), grid3d, deg_pml, R_pml)
-    eps_node = [None] * Axis.count()
-    mu_node = [None] * Axis.count()
-    for w in Axis.elems():
-        eps_node_cell[w] = expand_node_array(grid3d,eps_node_cell[w])
-        mu_node_cell[w] = expand_node_array(grid3d,mu_node_cell[w])
-        eps_node[w] = eps_node_cell[w]
-        mu_node[w] = mu_node_cell[w]
+    # eps_node = [None] * Axis.count()
+    # mu_node = [None] * Axis.count()
+    # for w in Axis.elems():
+    #     eps_node_cell[w] = expand_node_array(grid3d,eps_node_cell[w])
+    #     mu_node_cell[w] = expand_node_array(grid3d,mu_node_cell[w])
+    #     eps_node[w] = eps_node_cell[w]
+    #     mu_node[w] = mu_node_cell[w]
     # Construct sources.
     # 暂时注释这行
     # [J_cell, M_cell, Ms] = myassign_source(grid3d, srcj_array, srcm_array)
     J_cell, M_cell, Ms = [None]*3
     if TME_mode == "TM":
-        A,b = create_eqTM(eqtype,pml,omega,eps_node,mu_node,s_factor_cell,J_cell,M_cell,grid3d)
+        A,b = create_eqTM(eqtype,pml,omega,eps_cell,mu_cell,s_factor_cell,J_cell,M_cell,grid3d)
     return M_s, A, b
 
 def myassign_source(grid3d:Grid3d, srcj_array, srcm_array):

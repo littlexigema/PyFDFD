@@ -14,16 +14,16 @@ def mean_material_node(grid3d: Grid3d, gt: GT, material_node: list) -> list:
         raise ValueError('"gt" should be an instance of GT.')
     if not (isinstance(material_node, list) and len(material_node) == Axis.count() and all(isinstance(m, torch.Tensor) and m.shape == torch.Size(grid3d.N.tolist()) for m in material_node)):
         raise ValueError(f'"material_node" should be a list of {Axis.count()} tensors with shape {grid3d.N} and complex elements.')
-
+    material_node_inner = [None] * Axis.count()
     for w in Axis.elems():
-        material_node[w.value] = expand_node_array(grid3d, material_node[w.value])  # (Nx+2) x (Ny+2) x (Nz+2)
+        material_node_inner[w.value] = expand_node_array(grid3d, material_node[w.value])  # (Nx+2) x (Ny+2) x (Nz+2)
 
     if gt == GT.PRIM:
         # material parameters for fields on primary grid
-        material_cell = arithmetic_mean_material_node(material_node)
+        material_cell = arithmetic_mean_material_node(material_node_inner)
     else:  # gt == GT.DUAL
         # material parameters for fields on dual grid
-        material_cell = harmonic_mean_material_node(material_node)
+        material_cell = harmonic_mean_material_node(material_node_inner)
 
     return material_cell
 

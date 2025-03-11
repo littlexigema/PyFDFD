@@ -24,3 +24,20 @@ end
 
 ## generate_lprim3d值只完成了withuniform=True情况的代码正确性验证
 ## matlab中构建了两个domain，第一个是regSize区域，第二个是真正的逆问题求解区域，我们暂时只关注后者，因此config.py中没有regSize参数
+
+## MaxWell Function
+$\nabla \times \bf{E} = -\frac{\partial B}{\partial t}$
+$\nabla \times \bf{B} = \mu_0 J + \mu_0 \epsilon_0 \frac{\partial E}{\partial t}$
+$\nabla \cdot E = \frac{\rho_0}{\epsilon_0}$
+$\nabla \cdot B = 0$
+$\bf{B} = \mu H$
+$\mu = \mu_0*\mu_r$
+$\epsilon = \epsilon_r*\epsilon_0$
+### FDFD Formulation
+$\nabla \times \bf{E} = -j \omega \mu_0 H$
+$\nabla \times \bf{H} = J + j \omega \epsilon_0 E$
+
+
+### FDTD Formulation
+$\nabla \times \bf{E} = -\frac{\partial B}{\partial t}$
+$\nabla \times \bf{B} = \mu_0 J + \mu_0 \epsilon_0 \frac{\partial E}{\partial t}$
