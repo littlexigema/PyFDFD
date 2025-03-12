@@ -26,7 +26,7 @@ class Field:
         args:
             
         """
-        
+        self.set_incident_E(omega,)
         pass
     
     def set_incident_E(self, omega, theta_T:torch.tensor,theta_R:torch.tensor,T_R:Union[torch.tensor,float],R_R:Union[torch.tensor,float] ) ->torch.Tensor:

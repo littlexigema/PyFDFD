@@ -10,6 +10,7 @@ import math
 # import numpy as np
 
 def create_eqTM(eqtype,pml,omega,eps_cell,mu_cell,s_factor_cell,J_cell,M_cell,grid3d):
+    """由于电流源的不确定性，我们并不直接计算J"""
     N = grid3d.N
     if J_cell==None:
         src_n = 0
@@ -27,10 +28,57 @@ def create_eqTM(eqtype,pml,omega,eps_cell,mu_cell,s_factor_cell,J_cell,M_cell,gr
 
     ge = eqtype.ge
     Ce, Cm = create_curls(ge, dl_factor_cell, grid3d)
-    
-    if pml == PML.U:
-        pass
-    
+    mu = torch.concat([mu_inner.flatten() for mu_inner in mu_cell])
+    eps = torch.concat([eps_inner.flatten() for eps_inner in eps_cell])
+    ind_pec = torch.isinf(abs(eps))
+    eps[ind_pec] = 1
+    pm = torch.ones_like(ind_pec)  # PEC mask
+    pm[ind_pec] = 0
+    n = pm.size(0)
+    index = torch.arange(n).repeat(2,1)
+    PM = torch.sparse_coo_tensor(index,pm + 0j,size=(n,n))
+    j,m = None,None
+    if eqtype.f == FT.E:
+        INV_MU = torch.sparse_coo_tensor(index,1 / mu + 0j,size=(n,n)) #when mu has Inf, "MU \ Mat" complains about singularity
+        D = torch.sparse_coo_tensor(index,eps + 0j,size=(n,n))
+        
+        A_for = PM @ (Cm @ INV_MU @ Ce) @ PM
+        A_back = - omega**2 * D
+        # hfcn_A = @(e) pm .* (Cm * ((Ce * (pm .* e)) ./ mu)) - omega^2 * (eps .* e);
+        # hfcn_Atr = @(e) pm .* (Ce.' * ((Cm.' * (pm .* e)) ./ mu)) - omega^2 * (eps .* e);
+        
+        # b = -1j *omega*j - Cm@(m/mu.repeat(1,src_n))
+    elif eqtype.f == FT.H:
+        INV_EPS = torch.sparse_coo_tensor(index,1 / eps,size=(n,n))
+        D = torch.sparse_coo_tensor(index,mu,size=(n,n))
+        A_for = (Ce @ INV_EPS @ Cm)
+        A_back = - omega**2 @ D    
+        # b = -1j * omega * m - Ce @ (j / mu.repeat(1,src_n))
+    return A_for, A_back
+        # hfcn_GfromF = @(e) (Ce * e + m) ./ (-1i*omega*repmat(mu,1,src_n));
+    # mu = [mu_cell{Axis.x}(:) ; mu_cell{Axis.y}(:) ; mu_cell{Axis.z}(:)];
+    # eps = [eps_cell{Axis.x}(:) ; eps_cell{Axis.y}(:) ; eps_cell{Axis.z}(:)];
+    # % j = cell(1,src_n); m = cell(1,src_n);
+    # j = sparse([]);
+    # m = sparse([]);
+    # for ii = 1:src_n
+    #     tmp1 = [J_cell{ii,Axis.x}(:); J_cell{ii,Axis.y}(:); J_cell{ii,Axis.z}(:)];
+    #     tmp2 = [M_cell{ii,Axis.x}(:); M_cell{ii,Axis.y}(:); M_cell{ii,Axis.z}(:)];
+    #     j = [j, sparse(tmp1)];
+    #     m = [m, sparse(tmp2)];
+    # end
+    # if pml == PML.U:
+    #     pass
+
+def generate_A_back(omega,eps_cell):
+    eps = torch.concat([eps_inner.flatten() for eps_inner in eps_cell])
+    ind_pec = torch.isinf(abs(eps))
+    eps[ind_pec] = 1
+    n = ind_pec.size(0)
+    index = torch.arange(n).repeat(2,1)
+    D = torch.sparse_coo_tensor(index,eps + 0j,size=(n,n))
+    A_back = - omega**2 * D
+    return A_back
 
 def reordering_indices(dof:int, N:int):
     """
@@ -137,8 +185,8 @@ def build_system(m_unit,wvlen,domain,Lpml,emobj:EMObject):
     # [J_cell, M_cell, Ms] = myassign_source(grid3d, srcj_array, srcm_array)
     J_cell, M_cell, Ms = [None]*3
     if TME_mode == "TM":
-        A,b = create_eqTM(eqtype,pml,omega,eps_cell,mu_cell,s_factor_cell,J_cell,M_cell,grid3d)
-    return M_s, A, b
+        A = create_eqTM(eqtype,pml,omega,eps_cell,mu_cell,s_factor_cell,J_cell,M_cell,grid3d)
+    return A
 
 def myassign_source(grid3d:Grid3d, srcj_array, srcm_array):
     """

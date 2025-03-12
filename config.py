@@ -11,7 +11,7 @@ TME_mode = "TM"
 R_transmitter = 0.72#单位m
 R_receiver = 0.76#单位m
 
-fre = 1#2GHZ
+fre = 4#2GHZ
 d_pml = 5#像素数
 eps_b = 1;sigma_b = 0
 eps0 = 8.85418782e-12
