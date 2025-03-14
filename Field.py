@@ -7,11 +7,10 @@ from config import *
 import torch
 import math
 import os
-from PIL import Image
+# from PIL import Image
 # import pandas as pd
 # data = pd.read_csv('./data.csv',header=None).values
 # data = torch.from_numpy(data)
-pwd = os.getcwd()
 
 class Field:
     m_unit = m_unit
@@ -36,8 +35,7 @@ class Field:
         # tmp_domain_y = torch.linspace(-ys,ys,Field.ny)
         # step_size = 2*xs/(Field.nx-1)
         self.set_incident_E()
-        self.set_chi(omega,load_from_gt=True,**{'file':os.path.join(pwd,'Data','multi_circles','1_ground_truth.npy')})
-        self.set_scatter_E(omega)
+        
     
     def set_incident_E(self) ->torch.Tensor:
         """
@@ -127,9 +125,9 @@ class Field:
         xi_all = -1j*omega*(self.epsil-1)*eps0*self.cell_area
         xi_all = xi_all.to(torch.complex64)
         bool_eps = (self.epsil != 1)
-        plt.imshow(bool_eps)
-        plt.colorbar()
-        plt.show()
+        # plt.imshow(bool_eps)
+        # plt.colorbar()
+        # plt.show()
         x0 = self.x_dom[bool_eps];y0 = self.y_dom[bool_eps]
         x0 = x0.flatten();y0 = y0.flatten()
         xi_forward = xi_all[bool_eps]
@@ -154,10 +152,10 @@ class Field:
         R_mat = Coef*1j/4*hankel_0_1(k_0*rho_mat)
         E_CDM = R_mat@torch.diag(xi_forward)@E_tot
         self.Es = E_CDM
-        Es_npy = self.Es.numpy()
-        import numpy as np
-        np.save(os.path.join(pwd,'Data','multi_circles','1_Es.npy'),Es_npy)
-        print('Es.shape:{}'.format(self.Es.shape))
+        # Es_npy = self.Es.numpy()
+        # import numpy as np
+        # np.save(os.path.join(pwd,'Data','multi_circles','1_Es.npy'),Es_npy)
+        # print('Es.shape:{}'.format(self.Es.shape))
         # x0[]
         # assert hasattr(self,'E_inc'), RuntimeError("Please run Field.set_incident_E() before using this function!")
         # self.vJ = self.chi*self.E_inc    #contrast source (N_unit,N_trans)
@@ -177,11 +175,11 @@ class Field:
             plt.imshow(chi)
             plt.colorbar()
             plt.show()
-            array = (chi/chi.max() * 255).astype(np.uint8)
+            # array = (chi/chi.max() * 255).astype(np.uint8)
 
-            # 使用 PIL 保存，确保图像大小精确为 n×n
-            image = Image.fromarray(array)
-            image.save("1.png")  
+            # # 使用 PIL 保存，确保图像大小精确为 n×n
+            # image = Image.fromarray(array)
+            # image.save("1.png")  
             self.epsil = torch.from_numpy(chi)
         else:
             # if name=="circle":
@@ -198,13 +196,16 @@ class Field:
         return lambda_,lambda_/Field.m_unit
 
 
-    def get_scatter():
+    def save_Es(self,path):
         """
             根据FDFD计算公式,E^s = \phi * vJ
             需要分别计算Phi, vJ = \chi e^inc
         """
-
-        pass
+        Es_npy = self.Es.numpy()
+        import numpy as np
+        np.save(os.path.join(pwd,path,'Es.npy'),Es_npy)
+        # print('Es.shape:{}'.format(self.Es.shape))
+        # pass
 
 
     

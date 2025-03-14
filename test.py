@@ -54,25 +54,32 @@ def apply_diff_matrix_2d(tensor, D, axis):
     
     return result
 
-# 示例用法
-N = (5, 5)  # Number of grid points in each dimension
-tensor = torch.tensor([[1, 2, 3, 4, 5],
-                       [6, 7, 8, 9, 10],
-                       [11, 12, 13, 14, 15],
-                       [16, 17, 18, 19, 20],
-                       [21, 22, 23, 24, 25]], dtype=torch.float32)
+# # 示例用法
+# N = (5, 5)  # Number of grid points in each dimension
+# tensor = torch.tensor([[1, 2, 3, 4, 5],
+#                        [6, 7, 8, 9, 10],
+#                        [11, 12, 13, 14, 15],
+#                        [16, 17, 18, 19, 20],
+#                        [21, 22, 23, 24, 25]], dtype=torch.float32)
 
-# Create finite difference matrices for x and y axes
-D_x = create_diff_matrix_2d(N, axis=0, boundary_condition='periodic')
-D_y = create_diff_matrix_2d(N, axis=1, boundary_condition='periodic')
+# # Create finite difference matrices for x and y axes
+# D_x = create_diff_matrix_2d(N, axis=0, boundary_condition='periodic')
+# D_y = create_diff_matrix_2d(N, axis=1, boundary_condition='periodic')
 
-# Apply finite difference matrices to the tensor
-diff_x = apply_diff_matrix_2d(tensor, D_x, axis=0)
-diff_y = apply_diff_matrix_2d(tensor, D_y, axis=1)
+# # Apply finite difference matrices to the tensor
+# diff_x = apply_diff_matrix_2d(tensor, D_x, axis=0)
+# diff_y = apply_diff_matrix_2d(tensor, D_y, axis=1)
 
-print("Original tensor:")
-print(tensor)
-print("Difference along x-axis:")
-print(diff_x)
-print("Difference along y-axis:")
-print(diff_y)
+# print("Original tensor:")
+# print(tensor)
+# print("Difference along x-axis:")
+# print(diff_x)
+# print("Difference along y-axis:")
+# print(diff_y)
+def func(tensor):
+    tensor[-1] = -1
+if __name__=="__main__":
+    A = torch.arange(10,dtype =torch.float32)
+    print(A.requires_grad)
+    func(A)
+    print(A)

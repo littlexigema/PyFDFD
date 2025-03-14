@@ -1,3 +1,6 @@
+import os
+pwd = os.getcwd()
+
 xs = 1000#(mm)1m
 #ys = 100#(mm)
 ys = xs

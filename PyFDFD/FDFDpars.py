@@ -1,4 +1,4 @@
-import build_system
+import PyFDFD.Forward_basic as Forward_basic
 from base import PML,EquationType,FT,GT
 
 def FDFDpars():

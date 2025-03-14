@@ -59,3 +59,11 @@ def assign_material_node(grid3d:Grid3d, object_array, eps_node_cell = None, mu_n
                 mu_node_cell[w.value][ind_tf] = material.mu[w.value, w.value]
 
     return eps_node_cell, mu_node_cell
+
+def assign_material_node_any_shape(grid3d:Grid3d, epsil:torch.Tensor):
+    """
+    只根据epsil tensor来分配eps_node_cell,因为已知epsil分布在prim网格上，所以直接将epsil赋值给eps_node_cell就行
+    """
+    epsil_inner = epsil.detach().clone()
+    eps_node_cell = [epsil_inner for _ in range(Axis.count())]
+    return eps_node_cell
