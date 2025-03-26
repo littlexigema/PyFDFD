@@ -34,10 +34,15 @@ $\bf{B} = \mu H$
 $\mu = \mu_0*\mu_r$
 $\epsilon = \epsilon_r*\epsilon_0$
 ### FDFD Formulation
-$\nabla \times \bf{E} = -j \omega \mu_0 H$
+$\nabla \times \bf{E} = -j \omega \mu \bf{H} - \bf{M}$
 $\nabla \times \bf{H} = J + j \omega \epsilon_0 E$
 
 
 ### FDTD Formulation
 $\nabla \times \bf{E} = -\frac{\partial B}{\partial t}$
 $\nabla \times \bf{B} = \mu_0 J + \mu_0 \epsilon_0 \frac{\partial E}{\partial t}$
+
+### Yee Grid
+可以从Yee_grid.png中看出网格是如何分布的，TM mode(Ez)模式下，电场E分布在主网格(prim)上,H/B分布在副网格上(dual)
+
+本项目进行的是2D dielectric 电磁反演，transmitter发送TM模式波，receiver实际上测量的是电场E的z分量。

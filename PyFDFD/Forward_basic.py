@@ -176,11 +176,13 @@ class Forward_basic:
         """
         isepsgiven = False
         eqtype = EquationType(FT.E,GT.PRIM)
-        if isepsgiven:
-            eps_node_cell= assign_material_node_any_shape(self.grid3d,self.field.epsil)
+        if not isepsgiven:
+            assert self.guess.epsil is not None, RuntimeError('Guess should have epsil before use this function:{}'.format("def build_system_back(self)s"))
+            eps_node_cell= assign_material_node_any_shape(self.grid3d,self.guess.epsil)
         eps_cell = mean_material_node(self.grid3d,eqtype.ge,eps_node_cell)#不让mean_material_node内部对material_node改变影响外部变量
         mu_cell = mean_material_node(self.grid3d,eqtype.ge,self.mu_node_cell)
         A_back = self.generate_A_back(self.osc.in_omega0(),eps_cell)
+        self.eps_node_cell = eps_node_cell
         return A_back
 
         
@@ -191,7 +193,7 @@ class Forward_basic:
         eps[ind_pec] = 1
         n = ind_pec.size(0)
         index = torch.arange(n).repeat(2,1)
-        D = torch.sparse_coo_tensor(index,eps + 0j,size=(n,n))
+        D = torch.sparse_coo_tensor(index,eps + 0j,size=(n,n)).to(torch.complex64)
         A_back = - omega**2 * D
         return A_back
 

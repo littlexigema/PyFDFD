@@ -100,8 +100,8 @@ class Grid3d:
         return torch.tensor([comp.center for comp in self.comp])
 
     def set_kBloch(self, plane_src):
-        for comp in self.comp:
-            comp.set_kBloch(plane_src)
+        for w in Axis.elems():
+            self.comp[w].set_kBloch(plane_src)
 
     @property
     def kBloch(self):

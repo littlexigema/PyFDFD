@@ -61,14 +61,16 @@ def comp_mul(x, y):
     return torch.stack([x_Re@y_Re - x_Im@y_Im, x_Re@y_Im + x_Im@y_Re], dim=0)
 
 if __name__ == '__main__':
-    A_comp = torch.tensor([[1.0+2.0j, 3.0+4.0j],
-                  [5.0+6.0j, 7.0+8.0j]])
-    B_comp = torch.tensor([[9.0+10.0j, 11.0+12.0j],
-                  [13.0+14.0j, 15.0+16.0j]])
-    A_real = torch.stack([A_comp.real, A_comp.imag], dim=0)
-    B_real = torch.stack([B_comp.real, B_comp.imag], dim=0)
-    C = comp_mul(A_real, B_real)
-    C1 = A_comp @ B_comp
-    print(C, C1)
-    A_eye = torch.stack([torch.eye(2), torch.eye(2)], dim=0)
-    print(A_eye)
+    # A_comp = torch.tensor([[1.0+2.0j, 3.0+4.0j],
+    #               [5.0+6.0j, 7.0+8.0j]])
+    # B_comp = torch.tensor([[9.0+10.0j, 11.0+12.0j],
+    #               [13.0+14.0j, 15.0+16.0j]])
+    # A_real = torch.stack([A_comp.real, A_comp.imag], dim=0)
+    # B_real = torch.stack([B_comp.real, B_comp.imag], dim=0)
+    # C = comp_mul(A_real, B_real)
+    # C1 = A_comp @ B_comp
+    # print(C, C1)
+    # A_eye = torch.stack([torch.eye(2), torch.eye(2)], dim=0)
+    # print(A_eye)
+    value = torch.tensor([0.0])
+    print(hankel_0_1(value))

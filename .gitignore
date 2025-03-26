@@ -3,4 +3,5 @@ __pycache__/
 sparse_matrix.md
 *.jpg
 *.png
+!./Yee_grid.png
 test*

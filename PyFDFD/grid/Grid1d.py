@@ -90,9 +90,9 @@ class Grid1d:
         """
         如果需要使用这个函数,check the type of blochSrc
         """
-        raise RuntimeError('the type of blochSrc is :{}'.format(type(blochSrc)))
+        # raise RuntimeError('the type of blochSrc is :{}'.format(type(blochSrc)))
         # assert isinstance(blochSrc, WithBloch), '"blochSrc" should be an instance of WithBloch.'
-        # self.kBloch = blochSrc.kBloch(self.axis)
+        self.kBloch = blochSrc.kBloch(self.axis)
 
     def contains(self, l):
         # assert np.issubdtype(l.dtype, np.floating), '"l" should be an array with real elements.'

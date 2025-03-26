@@ -1,8 +1,11 @@
 from functions import hankel_0_1,hankel_1_1
 from build_object import build_circle
 import matplotlib.pyplot as plt
-from typing import Tuple,Union
+from typing import Tuple,Union,List
 from tqdm import trange
+from PyFDFD.source import PlaneSrc,Source
+from PyFDFD.grid import Grid3d
+from PyFDFD.base import GT,Axis
 from config import *
 import torch
 import math
@@ -33,11 +36,53 @@ class Field:
         # theta_R = torch.linspace(0,2*pi,n_R+1)[:-1]#receiver的角度tensor
         # tmp_domain_x = torch.linspace(-xs,xs,Field.nx)
         # tmp_domain_y = torch.linspace(-ys,ys,Field.ny)
-        # step_size = 2*xs/(Field.nx-1)
-        self.set_incident_E()
+        # step_size = 2*xs/(Field.n的x-1)
+        self.set_incident_E_MOM()
+        
+    def set_incident_E_FDFD(self,grid3d:Grid3d,SRCJ_:List[Source],GT_:GT):
+        """
+        build_system:J_cell = assign_source(grid3d, srcj_array);
+        先实现assign source,再实现maxwell_run inspect_only=False,
+        [E, H] = solve_eq_direct(solveropts.eqtype, solveropts.pml, osc.in_omega0(), eps, mu, s_factor, J, M, grid3d);
+        src.generate实际上调用了generate_kernel
+        """
+        for src in SRCJ_:
+            src.set_gridtype(GT_)
+        """
+            elseif ischar(arg) && strcmpi(arg,'SRCJ')
+			% Set up sources.
+			iarg = iarg + 1; arg = varargin{iarg};
+			if ~istypesizeof(arg, 'Source', [1 0])
+				warning('Maxwell:buildSys', 'no source is given.');
+			end
+
+			while istypesizeof(arg, 'Source', [1 0])
+				if istypesizeof(arg, 'TFSFPlaneSrc')
+					isTFSF = true;
+				end
+				srcj_array_curr = arg;
+				for src = srcj_array_curr
+					src.set_gridtype(ge);
+				end
+				srcj_array = [srcj_array(1:end), srcj_array_curr];
+				iarg = iarg + 1; arg = varargin{iarg};
+			end
+			iarg = iarg - 1;
+        """
+        J_cell = [None]*Axis.count()
+        for w in Axis.elems():
+            J_cell[w] = torch.zeros(grid3d.N).squeeze()
+        for src in SRCJ_:
+            for w in Axis.elems():
+                ind, JMw_patch = src.generate(w,grid3d)
+            """
+            if ~isempty(JMw_patch)
+			    JM_cell{w}(ind{:}) = JM_cell{w}(ind{:}) + JMw_patch;  % superpose sources
+		    end
+            """
         
     
-    def set_incident_E(self) ->torch.Tensor:
+    def set_incident_E_MOM(self) ->torch.Tensor:
         """
         对于给定的Transmitter的极坐标位置
         计算对于指定receiver位置和unit的入射场
@@ -116,7 +161,7 @@ class Field:
     #     assert omega==self.omega, RuntimeError("omega of chi is not equal to Field.omega")
     #     self.chi = Field.get_chi(omega,name,**{'epsilon_robj':3,'sigma_obj':0,'r':0.01,'x_c':0,'y_c':0})
 
-    def set_scatter_E(self,omega):
+    def set_scatter_E_MOM(self,omega):
         """
             args:
                 omega : 角频率,连续空间中的(与m的单位一致)
@@ -124,13 +169,15 @@ class Field:
         # for i in range(len(self.fre)):
         xi_all = -1j*omega*(self.epsil-1)*eps0*self.cell_area
         xi_all = xi_all.to(torch.complex64)
-        bool_eps = (self.epsil != 1)
+        # bool_eps = (self.epsil != 1)
         # plt.imshow(bool_eps)
         # plt.colorbar()
         # plt.show()
-        x0 = self.x_dom[bool_eps];y0 = self.y_dom[bool_eps]
+        # x0 = self.x_dom[bool_eps];y0 = self.y_dom[bool_eps]
+        x0 = self.x_dom;y0 = self.y_dom
         x0 = x0.flatten();y0 = y0.flatten()
-        xi_forward = xi_all[bool_eps]
+        # xi_forward = xi_all[bool_eps]
+        xi_forward = xi_all
         xi_forward = xi_forward.flatten()
         N_cell = x0.shape[0]
         # Phi_mat = torch.zeros((self.N_cell_dom,self.N_cell_dom),dtype=torch.complex64)
@@ -144,14 +191,18 @@ class Field:
         Phi_mat = Phi_mat + S1*torch.eye(N_cell)
 
         A = torch.eye(N_cell,dtype = torch.complex64)-Phi_mat@torch.diag(xi_forward)
-        E_tot = torch.linalg.solve(A,self.E_inc[bool_eps.flatten(),:])#(N_cell,N_rec)
-
+        # E_tot = torch.linalg.solve(A,self.E_inc[bool_eps.flatten(),:])#(N_cell,N_rec)
+        E_tot = torch.linalg.solve(A,self.E_inc)#(N_cell,N_rec)
+        
         """receiver 坐标"""
         pos_R_x = self.pos_R.real.flatten().unsqueeze(0);pos_R_y = self.pos_R.imag.flatten().unsqueeze(0)
         rho_mat = torch.sqrt((x0.view(-1,1)-pos_R_x)**2+(y0.view(-1,1)-pos_R_y)**2).T
         R_mat = Coef*1j/4*hankel_0_1(k_0*rho_mat)
         E_CDM = R_mat@torch.diag(xi_forward)@E_tot
         self.Es = E_CDM
+        self.Phi_mat = Phi_mat
+        self.R_mat = R_mat
+
         # Es_npy = self.Es.numpy()
         # import numpy as np
         # np.save(os.path.join(pwd,'Data','multi_circles','1_Es.npy'),Es_npy)
@@ -172,9 +223,10 @@ class Field:
         if load_from_gt:
             import numpy as np
             chi = np.load(**kargs)
-            plt.imshow(chi)
-            plt.colorbar()
-            plt.show()
+            # plt.ion()
+            # plt.imshow(chi)
+            # plt.colorbar()
+            # plt.show()
             # array = (chi/chi.max() * 255).astype(np.uint8)
 
             # # 使用 PIL 保存，确保图像大小精确为 n×n
