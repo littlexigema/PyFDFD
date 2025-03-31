@@ -27,11 +27,14 @@ class Axis(Enum):
         return self.value
 
     @staticmethod
-    def elems():
+    def elems(ind = None):
         """
         Returns all the elements of the Axis enumeration.
         """
-        return list(Axis)
+        elems = [Axis.X, Axis.Y, Axis.Z]
+        if ind is not None:
+            elems = elems[ind]  
+        return elems
 
     @staticmethod
     def count():
@@ -39,6 +42,12 @@ class Axis(Enum):
         Returns the count of Axis elements.
         """
         return len(Axis.elems())
+    def cycle(self):
+        r = self#0,1,2
+        p = Axis.elems((int(self)+1)%Axis.count())#1,2,0
+        q = Axis.elems((int(self)+2)%Axis.count())#2,0,1
+        return p,q,r
+
 
 # Example usage
 if __name__ == "__main__":
@@ -50,6 +59,7 @@ if __name__ == "__main__":
     print(Axis.X)  # 输出: X (x-axis)
     print(int(Axis.X))  # 输出: 0
     print(repr(Axis.X))  # 输出: X (x-axis)
+    print(Axis.X.value)
     # lst=[1,2,3]
     # for w in Axis.elems():
     #     print(lst[w])

@@ -1,7 +1,7 @@
-from ..base.Axis import Axis
-from ..base.Sign import Sign
+from ..base import Axis,Sign,GT
 from ..shape.Box import Box
 from ..shape.Shape import Shape
+from generate_lprim1d_part import generate_lprim1d_part
 import numpy as np
 import torch
 """"
@@ -30,7 +30,8 @@ def generate_lprim3d(domain:Box, Lpml, shape_array=list, src_array=list, withuni
             Npml[w,1] = (lprim>lprim[-1]-Lpml[w,1]).sum()#sign.n
             lprim_cell.append(lprim)
     else:
-        intervals = [[] for w in range(Axis.count())]  # 使用字典来存储 intervals
+        """动态生成网格，暂时不支持"""
+        intervals = [[]]*Axis.count()  # 使用字典来存储 intervals
 
         for shape in shape_array:
             for w in Axis.elems():
@@ -47,13 +48,17 @@ def generate_lprim3d(domain:Box, Lpml, shape_array=list, src_array=list, withuni
                     intervals[w].append(inter_curr)
 
         # Initialize lprim0 and ldual0
-        lprim0 = [[] for w in Axis.count()]
-        ldual0 = [[] for w in Axis.count()]
+        lprim0 = [[]]*Axis.count()
+        ldual0 = [[]]*Axis.count()
 
         for src in src_array:
-            for w in range(Axis.count()):
-                lprim0[w].append(src.l[w, 0])#GT.prim
-                ldual0[w].append(src.l[w, 1])#GT.dual
+            for w in Axis.elems():
+                lprim = src.l[w,GT.PRIM]
+                lprim = lprim[~torch.isnan(lprim)].tolist()
+                ldual = src.l[w,GT.DUAL]
+                ldual = ldual[~torch.isnan(ldual)].tolist()
+                lprim0[w] += lprim#GT.prim
+                ldual0[w] += ldual#GT.dual
 
         # For each Axis element, perform grid generation and exception handling
         lprim_cell = {w: None for w in Axis.elems()}  # to store the generated grids
@@ -61,7 +66,7 @@ def generate_lprim3d(domain:Box, Lpml, shape_array=list, src_array=list, withuni
 
         for w in range(Axis.count()):
             try:
-                lprim_part = generate_lprim1d_part(domain.interval(w), Lpml[w, Sign.n], intervals[w], lprim0[w], ldual0[w])
+                lprim_part = generate_lprim1d_part(domain.interval(w), Lpml[w, :], intervals[w], lprim0[w], ldual0[w])
                 lprim = complete_lprim1d(lprim_part)
             except Exception as err1:
                 try:

@@ -46,3 +46,8 @@ $\nabla \times \bf{B} = \mu_0 J + \mu_0 \epsilon_0 \frac{\partial E}{\partial t}
 可以从Yee_grid.png中看出网格是如何分布的，TM mode(Ez)模式下，电场E分布在主网格(prim)上,H/B分布在副网格上(dual)
 
 本项目进行的是2D dielectric 电磁反演，transmitter发送TM模式波，receiver实际上测量的是电场E的z分量。
+
+### E-Field
+我已经改成使用FDFD AE = B计算散射场，但仍有个问题：虽然正反问题均用FDFD计算，但合成数据和测量数据这两个领域仍不能同时求解，因为FDFD计算出来的测量场E-field是全部grid上的，但实际测量场E-field是圆形边界上的值。
+
+能否使用极坐标系？或者能否使用格林函数映射过去？

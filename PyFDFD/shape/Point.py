@@ -1,6 +1,7 @@
 from typing import List, Callable
 import torch
 from ..base.Axis import Axis
+from . import Shape
 # from .ZeroVolShape import ZeroVolShape
 
 class Point(Shape):
@@ -16,11 +17,11 @@ class Point(Shape):
     
     def __init__(self, location: List[float]):
         # Validate location
-        if not (isinstance(location, (list, torch.Tensor)) and len(location) == Axis.count()):
+        if not (isinstance(location, list) and len(location) == Axis.count()):
             raise ValueError(f'"location" should be length-{Axis.count()} list with real elements')
             
-        if isinstance(location, list):
-            location = torch.tensor(location, dtype=torch.float32)
+        # if isinstance(location, list):
+        #     location = torch.tensor(location, dtype=torch.float32)
             
         # Define level set function
         def lsf(x: torch.Tensor, y: torch.Tensor, z: torch.Tensor) -> torch.Tensor:

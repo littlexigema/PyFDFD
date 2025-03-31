@@ -73,25 +73,76 @@ class Source(ABC):
             raise ValueError('"gt" should be instance of GT')
         self._gt = gt
 
-    def get_l(self) -> List[List[torch.Tensor]]:
+    def l(self) -> List[List[torch.Tensor]]:
         """
         Get grid locations based on grid type.
 
         Returns:
             List of lists containing grid locations for each axis and grid type
         """
-        l = [[None for _ in range(GT.count())] for _ in range(Axis.count())]
+        """
+        function l = get.l(this)
+			l = cell(Axis.count, GT.count);
+			if this.forceprim
+				l(:, GT.prim) = this.lgrid.';
+				l(:, GT.dual) = this.laltgrid.';
+			else
+				l(:, this.gt) = this.lgrid.';
+				l(:, alter(this.gt)) = this.laltgrid.';
+			end
+		end
+        """
+        l = torch.ones((Axis.count(),GT.count()))*torch.nan
         
         if self.forceprim:
             for i in range(Axis.count()):
-                l[i][GT.PRIM.value] = self.lgrid[i]
-                l[i][GT.DUAL.value] = self.laltgrid[i]
+                l[:,GT.PRIM] = self.lgrid.view(-1,1)
+                l[:,GT.DUAL] = self.laltgrid.view(-1,1)
         else:
             for i in range(Axis.count()):
-                l[i][self.gt.value] = self.lgrid[i]
-                l[i][GT.alter(self.gt).value] = self.laltgrid[i]
+                l[:,self.gt] = self.lgrid.view(-1,1)
+                l[:,self.gt.alter()] = self.laltgrid.view(-1,1)
         
         return l
+
+    def ind_for_loc(self,loc: float, axis: Axis, gt: GT, grid3d: Grid3d) -> int:
+        """
+        Find the index of a location in a grid array.
+        
+        Args:
+            loc (float): Location to find in the grid
+            axis (Axis): Axis along which to search (X, Y, or Z)
+            gt (GT): Grid type (PRIM or DUAL)
+            grid3d (Grid3d): 3D grid object containing the grid arrays
+            
+        Returns:
+            int: Index of the location in the grid array
+        """
+        # Get the grid array for the specified axis and grid type
+        grid_array = grid3d.l[axis.value][gt]
+        
+        # Find exact matches
+        matches = torch.nonzero(grid_array == loc)
+        
+        if len(matches) > 0:
+            """
+            grid_array是一个向量
+            """
+            # Exact match found
+            return matches[0].item()
+        else:
+            # Find closest point
+            ind = torch.argmin(torch.abs(grid_array - loc)).item()
+            
+            # Warn about using closest point
+            print(
+                f'{gt.name} grid in {axis.name}-axis of "grid3d" does not have '
+                f'location {loc}; closest grid vertex at {grid_array[ind]:.6e} '
+                f'will be taken instead.',
+                RuntimeWarning
+            )
+            
+        return ind
 
     def generate(self, w_axis: Axis, grid3d: Grid3d) -> Tuple[List, torch.Tensor]:
         """
@@ -123,11 +174,11 @@ class Source(ABC):
             raise ValueError('"w_axis" should be instance of Axis')
         if not isinstance(grid3d, Grid3d):
             raise ValueError('"grid3d" should be instance of Grid3d')
-
-        try:
-            return self.generate_kernel(w_axis, grid3d)
-        except Exception as e:
-            raise RuntimeError('Source assignment failed.') from e
+        return self.generate_kernel(w_axis,grid3d)
+        # try:
+        #     return self.generate_kernel(w_axis, grid3d)
+        # except Exception as e:
+        #     raise RuntimeError('Source assignment failed.') from e
 
     @abstractmethod
     def generate_kernel(self, w_axis: Axis, grid3d: Grid3d) -> Tuple[List, torch.Tensor]:

@@ -19,7 +19,7 @@ class Field:
     m_unit = m_unit
     invdom = invdom#(mm)
     # xlchi  = round()
-    nx     = int(xs//m_unit)*2
+    nx     = int(xs//m_unit)*2#反演分辨率
     ny     = int(ys//m_unit)*2
     Lpml   = [d_pml,d_pml,0]
 
@@ -37,14 +37,28 @@ class Field:
         # tmp_domain_x = torch.linspace(-xs,xs,Field.nx)
         # tmp_domain_y = torch.linspace(-ys,ys,Field.ny)
         # step_size = 2*xs/(Field.n的x-1)
-        self.set_incident_E_MOM()
+        # self.set_incident_E_MOM()
         
-    def set_incident_E_FDFD(self,grid3d:Grid3d,SRCJ_:List[Source],GT_:GT):
+    def set_incident_E_FDFD(self,A,b):
         """
-        build_system:J_cell = assign_source(grid3d, srcj_array);
-        先实现assign source,再实现maxwell_run inspect_only=False,
-        [E, H] = solve_eq_direct(solveropts.eqtype, solveropts.pml, osc.in_omega0(), eps, mu, s_factor, J, M, grid3d);
-        src.generate实际上调用了generate_kernel
+        根据AE = B计算电场
+        """
+        E = torch.linalg.solve(A,b)
+        self.E_inc = E
+        # return torch.linalg.solve(A,b)
+    def set_total_E_FDFD(self,A,b):
+        """
+        根据AE = B计算电场
+        """
+        if self.epsil is None:
+            raise RuntimeError("Please run Field.set_chi() before using this function!")
+        E = torch.linalg.solve(A,b)
+        self.E_tot = E
+        self.E_scat = E-self.E_inc
+    
+    def assign_source(self,grid3d:Grid3d,SRCJ_:List[Source],GT_:GT):
+        """
+        使用FDFD计算入射场和总场，需要设置一个更大包含transmitter,receiver的计算域domain
         """
         for src in SRCJ_:
             src.set_gridtype(GT_)
@@ -70,16 +84,33 @@ class Field:
 			iarg = iarg - 1;
         """
         J_cell = [None]*Axis.count()
+        M_cell = [None]*Axis.count()
         for w in Axis.elems():
-            J_cell[w] = torch.zeros(grid3d.N).squeeze()
+            J_cell[w] = torch.zeros(torch.Size(grid3d.N),dtype = torch.complex32)
+            M_cell[w] = torch.zeros(torch.Size(grid3d.N),dtype = torch.complex32)
         for src in SRCJ_:
             for w in Axis.elems():
                 ind, JMw_patch = src.generate(w,grid3d)
-            """
-            if ~isempty(JMw_patch)
-			    JM_cell{w}(ind{:}) = JM_cell{w}(ind{:}) + JMw_patch;  % superpose sources
-		    end
-            """
+                if JMw_patch is not None:
+                    J_cell[w][tuple(ind)] += JMw_patch
+        withdraw = True
+        if withdraw:
+            import matplotlib.pyplot as plt
+            J_array = J_cell[SRCJ_[0].polarization].real.squeeze().numpy()
+            plt.imshow(J_array)
+            plt.colorbar()
+            plt.show()
+        else:
+            pass
+        """
+        function [E, H] = solve_eq_direct(eqtype, pml, omega, eps_cell, mu_cell, s_factor_cell, J_cell, M_cell, grid3d)
+
+        eq = MatrixEquation(eqtype, pml, omega, eps_cell, mu_cell, s_factor_cell, J_cell, M_cell, grid3d);
+        [A, b] = eq.matrix_op();
+        """
+
+        return [J_cell_inner.squeeze() for J_cell_inner in J_cell],[M_cell_inner.squeeze() for M_cell_inner in M_cell]
+
         
     
     def set_incident_E_MOM(self) ->torch.Tensor:
@@ -100,8 +131,8 @@ class Field:
             # 在参考CC-CSI代码发现,计算phi的时候,R的计算单位是grid的离散化像素,详见Readme.md解释
             MOM method
         """
-        theta_T = torch.linspace(0,2*pi,n_T+1)[:-1]#transmitter的角度tensor
-        theta_R = torch.linspace(0,2*pi,n_R+1)[:-1]#receiver的角度tensor
+        # theta_T = torch.linspace(0,2*pi,n_T+1)[:-1]#transmitter的角度tensor
+        # theta_R = torch.linspace(0,2*pi,n_R+1)[:-1]#receiver的角度tensor
         tmp_domain_x = torch.linspace(-xs,xs,Field.nx)
         tmp_domain_y = torch.linspace(-ys,ys,Field.ny)
         self.step_size = 2*xs/(Field.nx-1)#MOM step size
@@ -214,7 +245,7 @@ class Field:
         # self.E_tot = self.E_R+self.E_scat
         # print(self.E_scat.shape)
 
-    def set_chi(self,omega,load_from_gt:bool = True,**kargs):
+    def set_chi(self,load_from_gt:bool = True,**kargs):
         # assert isinstance(fre,list), TypeError('type(fre) should be list not {}!'.format(type(fre)))
         # len_fre = len(fre)
         # chi = torch.empty(Field.nx*Field.ny*4,1,dtype = torch.complex64)#len_fre

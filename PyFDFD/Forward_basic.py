@@ -15,14 +15,15 @@ class Forward_basic:
     def create_eqTM(self,eqtype,pml,omega,eps_cell,mu_cell,s_factor_cell,J_cell,M_cell,grid3d):
         """由于电流源的不确定性，我们并不直接计算J"""
         N = grid3d.N
-        if J_cell==None:
-            src_n = 0
-        elif isinstance(J_cell, torch.Tensor):
-            src_n,_ = J_cell.shape
-        else:
-            raise RuntimeError("J_cell should be a torch.Tensor or None.")
-        if src_n == 0:
-            src_n = 1
+        # if J_cell==None:
+        #     src_n = 0
+        # elif isinstance(J_cell, torch.Tensor):
+        #     src_n,_ = J_cell.shape
+        # else:
+        #     pass
+        #     # raise RuntimeError("J_cell should be a torch.Tensor or None.")
+        # if src_n == 0:
+        #     src_n = 1
         r = self.reordering_indices(Axis.count(), N)#后面做测试用
         # Construct curls
         dl_factor_cell = None
@@ -33,14 +34,34 @@ class Forward_basic:
         Ce, Cm = create_curls(ge, dl_factor_cell, grid3d)
         mu = torch.concat([mu_inner.flatten() for mu_inner in mu_cell])
         eps = torch.concat([eps_inner.flatten() for eps_inner in eps_cell])
+        """特殊值处理"""
         ind_pec = torch.isinf(abs(eps))
         eps[ind_pec] = 1
+
         pm = torch.ones_like(ind_pec)  # PEC mask
         pm[ind_pec] = 0
         n = pm.size(0)
         index = torch.arange(n).repeat(2,1)
         PM = torch.sparse_coo_tensor(index,pm + 0j,size=(n,n))
-        j,m = None,None
+        # j,m = None,None
+        """
+        CC-CSI代码
+        j = sparse([]);
+        m = sparse([]);
+        for ii = 1:src_n
+            tmp1 = [J_cell{ii,Axis.x}(:); J_cell{ii,Axis.y}(:); J_cell{ii,Axis.z}(:)];
+            tmp2 = [M_cell{ii,Axis.x}(:); M_cell{ii,Axis.y}(:); M_cell{ii,Axis.z}(:)];
+            j = [j, sparse(tmp1)];
+            m = [m, sparse(tmp2)];
+        end
+        """
+        """
+        maxwell-FDFD:
+        this.j = [J_cell{Axis.x}(:) ; J_cell{Axis.y}(:) ; J_cell{Axis.z}(:)];
+		this.m = [M_cell{Axis.x}(:) ; M_cell{Axis.y}(:) ; M_cell{Axis.z}(:)];
+        """
+        j = torch.concat([j_inner.flatten() for j_inner in J_cell])
+        m = torch.concat([m_inner.flatten() for m_inner in M_cell])
         if eqtype.f == FT.E:
             INV_MU = torch.sparse_coo_tensor(index,1 / mu + 0j,size=(n,n)) #when mu has Inf, "MU \ Mat" complains about singularity
             D = torch.sparse_coo_tensor(index,eps + 0j,size=(n,n))
@@ -50,14 +71,26 @@ class Forward_basic:
             # hfcn_A = @(e) pm .* (Cm * ((Ce * (pm .* e)) ./ mu)) - omega^2 * (eps .* e);
             # hfcn_Atr = @(e) pm .* (Ce.' * ((Cm.' * (pm .* e)) ./ mu)) - omega^2 * (eps .* e);
             
-            # b = -1j *omega*j - Cm@(m/mu.repeat(1,src_n))
+            b = -1j *omega*j - Cm@(m/mu)
+            """
+                original code
+                INV_MU = create_spdiag(1./this.mu);  % create INV_MU instead of inverting MU; "MU \ Mat" complains about singularity when mu has Inf
+				EPS = create_spdiag(this.eps);
+				PM = create_spdiag(this.pm);	
+
+				A = PM * (this.Cm * INV_MU * this.Ce) * PM - this.omega^2 * EPS;
+				b = -1i*this.omega*this.j - this.Cm*(this.m./this.mu);
+            
+				A = A(this.r, this.r);
+				b = b(this.r);
+            """
         elif eqtype.f == FT.H:
             INV_EPS = torch.sparse_coo_tensor(index,1 / eps,size=(n,n))
             D = torch.sparse_coo_tensor(index,mu,size=(n,n))
             A_for = (Ce @ INV_EPS @ Cm)
             A_back = - omega**2 @ D    
-            # b = -1j * omega * m - Ce @ (j / mu.repeat(1,src_n))
-        return A_for, A_back
+            b = -1j * omega * m - Ce @ (j / mu)
+        return A_for, A_back,b
             # hfcn_GfromF = @(e) (Ce * e + m) ./ (-1i*omega*repmat(mu,1,src_n));
         # mu = [mu_cell{Axis.x}(:) ; mu_cell{Axis.y}(:) ; mu_cell{Axis.z}(:)];
         # eps = [eps_cell{Axis.x}(:) ; eps_cell{Axis.y}(:) ; eps_cell{Axis.z}(:)];
@@ -110,7 +143,7 @@ class Forward_basic:
         """
         return r
 
-    def build_system(self,m_unit,wvlen,domain,Lpml,emobj:EMObject):
+    def build_system(self,m_unit,wvlen,domain,Lpml,emobj:EMObject,srcj_array:list=list(),srcm_array:list=list()):
         """
             function [osc, grid3d, s_factor_cell, eps_cell, mu_cell, J_cell, M_cell, Ms, ...
         obj_array, src_array, mat_array, eps_node, mu_node, isiso] = csi_build_system(varargin)
@@ -120,7 +153,7 @@ class Forward_basic:
         """
 
         shape_array,sshape_array = None,None#没有实例化的shape
-        srcj_array, srcm_array = list(), list()
+        # srcj_array, srcm_array = list(), list()
         src_array = [*srcj_array, *srcm_array]
         withuniformgrid = True
         isepsgiven = False
@@ -158,9 +191,10 @@ class Forward_basic:
         # Construct sources.
         # 暂时注释这行
         # [J_cell, M_cell, Ms] = myassign_source(grid3d, srcj_array, srcm_array)
-        J_cell, M_cell, Ms = [None]*3
+        # J_cell, M_cell, Ms = [None]*3
+        J_cell, M_cell = self.field.assign_source(grid3d, srcj_array,eqtype.ge)
         if TME_mode == "TM":
-            A_for,A_back = self.create_eqTM(eqtype,pml,osc.in_omega0(),eps_cell,mu_cell,s_factor_cell,J_cell,M_cell,grid3d)
+            A_for,A_back,b = self.create_eqTM(eqtype,pml,osc.in_omega0(),eps_cell,mu_cell,s_factor_cell,J_cell,M_cell,grid3d)
         self.mu_node_cell = mu_node_cell
         self.eps_node_cell = eps_node_cell
         self.s_factor_cell = s_factor_cell
@@ -168,7 +202,7 @@ class Forward_basic:
         self.osc = osc
         self.grid3d = grid3d
         self.pml = pml
-        return A_for,A_back
+        return A_for,A_back,b
 
     def build_system_back(self):
         """
