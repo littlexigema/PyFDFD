@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from typing import List, Union, Tuple
+import math
 
 def find_stiff_ddl(dl_array: torch.Tensor, rt: float) -> torch.Tensor:
     """Find indices where grid spacing changes too abruptly."""
@@ -49,7 +50,7 @@ def complete_lprim1d(lprim_part_cell: List[Union[torch.Tensor, float]]) -> torch
             curr = [lprim_part_cell[2*i], lprim_part_cell[2*i + 1]]
             
         # Validate subgrid
-        if len(curr[0]) < 2 or issorted(curr[0]):
+        if len(curr[0]) < 2 or (not issorted(curr[0])):
             raise ValueError(f'Element #{2*i+1} should be length-2 or longer tensor with ascending elements')
             
         # Check ordering between subgrids
@@ -61,11 +62,11 @@ def complete_lprim1d(lprim_part_cell: List[Union[torch.Tensor, float]]) -> torch
 
     # Single subgrid case
     if numelems == 1:
-        return ds[0][0]
+        return torch.tensor(ds[0][0])
 
     # Fill gaps between neighboring subgrids
-    rt = 1.9  # target ratio of geometric sequence
-    rmax = 2.0  # maximum ratio of geometric sequence
+    rt = 1.9#3.5#1.9  # target ratio of geometric sequence
+    rmax = 2.0#3.2#2.0  # maximum ratio of geometric sequence
     
     curr = ds[0]
     lprim_array = curr[0]
@@ -88,9 +89,9 @@ def complete_lprim1d(lprim_part_cell: List[Union[torch.Tensor, float]]) -> torch
         
         # Preserve provided subgrids despite roundoff errors in filler
         lprim_array = torch.cat([
-            lprim_array,
+            torch.tensor(lprim_array),
             filler[1:-1],
-            next_grid[0]
+            torch.tensor(next_grid[0])
         ])
         curr = next_grid
         
@@ -99,10 +100,10 @@ def complete_lprim1d(lprim_part_cell: List[Union[torch.Tensor, float]]) -> torch
     ind = find_stiff_ddl(dlprim_array, rmax)
     if len(ind) > 0:
         i = ind[0]
-        raise RuntimeError(f'Grid generation failed: grid vertex locations '
-                         f'[..., {lprim_array[i]}, {lprim_array[i+1]}, {lprim_array[i+2]}, ...] '
-                         f'are separated by [..., {dlprim_array[i]}, {dlprim_array[i+1]}, ...] '
-                         f'that do not vary smoothly.')
+        # raise RuntimeError(f'Grid generation failed: grid vertex locations '
+        #                  f'[..., {lprim_array[i]}, {lprim_array[i+1]}, {lprim_array[i+2]}, ...] '
+        #                  f'are separated by [..., {dlprim_array[i]}, {dlprim_array[i+1]}, ...] '
+        #                  f'that do not vary smoothly.')
     
     return lprim_array
 
@@ -154,13 +155,82 @@ def fill_constant(dl_min: float, dl_max: float, gap: torch.Tensor,
     return torch.linspace(gap[0], gap[1], int(numcells) + 1)
 
 def fill_targeted_geometric_sym(dl_sym,gap,dl_t,rt,rmax):
+    """
+    在gap之间生成平滑dl组成的grid，dl_sym代表gap两边的dl一致
+    """
     L = gap[1] - gap[0]
     if is_smooth(torch.tensor([dl_sym,dl_t]),rt):
-        filler = fill_constant()
+        filler = fill_constant(dl_sym,dl_t,gap,rt,rmax)
+        return filler
+    else:
+        dl_max = dl_t
+        dl_min = dl_sym
+        n = math.ceil(math.log(dl_max / dl_min) / math.log(rt))  # Smallest n satisfying (dl_max/dl_min)^(1/n) <= rt
+        r = (dl_max / dl_min) ** (1 / n)  # Ratio of geometric sequence
+        dl_array = dl_min * torch.tensor([r**i for i in range(1, n + 1)])
+        
+        L_graded = dl_array.sum().item()  # Sum of graded dl's
+        """以下代码待检查"""
+        if 2 * L_graded > L:
+            # Try to geometrically increase dl close to dl_t
+            n1 = math.ceil(math.log(L / (2 * dl_min * rt)) / math.log(rt))
+            n2 = math.ceil(math.log(L / (2 * dl_min)) / math.log(rt))
+            n = min(n1, n2)
+            r = (L / (2 * dl_min * n)) ** (1 / n)
+            dl_array = dl_min * torch.tensor([r**i for i in range(1, n + 1)])
+            dl_filler = torch.cat([dl_array, dl_array.flip(0)])
+        else:
+            # Slightly under-fill the gap with dl_max and graded dl's
+            n_dl_max = math.floor((L - 2 * L_graded) / dl_max)
+            dl_max_array = dl_max * torch.ones(n_dl_max)
+            L_dl_max = dl_max_array.sum().item()
+
+            # Slightly over-fill the gap with dl_min, graded dl's, and L_dl_max
+            n_dl_min = math.ceil((L - 2 * L_graded - L_dl_max) / (2 * dl_min))
+            dl_min_array = dl_min * torch.ones(n_dl_min)
+            L_dl_min = dl_min_array.sum().item()
+
+            # Update the graded dl's
+            L_graded = (L - L_dl_max - 2 * L_dl_min) / 2
+            r = (L_graded / (dl_min * n)) ** (1 / n)
+            dl_array = dl_min * torch.tensor([r**i for i in range(1, n + 1)])
+            dl_filler = torch.cat([dl_min_array, dl_array, dl_max_array, dl_array.flip(0), dl_min_array])
+
+    # Construct filler
+    filler = torch.cumsum(torch.cat([torch.tensor([gap[0]]), dl_filler]), dim=0)
+    return filler
 
 def fill_targeted_geometric(dl_n,gap,dl_t,dl_p,rt,rmax):
     L = gap[1] - gap[0]
     if dl_n == dl_p:
-        fillter = fill_targeted_geometric_sym(dl_n,gap,dl_t,rt,rmax)
-    
+        filler = fill_targeted_geometric_sym(dl_n,gap,dl_t,rt,rmax)
+        return filler
+    else:
+        # Otherwise, generate graded dl's
+        dl_max = max(dl_n, dl_p)
+        dl_min = min(dl_n, dl_p)
+        n = math.ceil(math.log(dl_max / dl_min) / math.log(rt))  # Smallest n satisfying (dl_max/dl_min)^(1/n) <= rt
+        r = (dl_max / dl_min) ** (1 / n)  # Ratio of geometric sequence
+        dl_array = dl_min * torch.tensor([r**i for i in range(1, n + 1)])
+        
+        # Slightly under-fill the gap with dl_max and the above generated graded dl's
+        L_graded = dl_array.sum().item()  # Sum of graded dl's
+        if L_graded > L:
+            raise ValueError(f'dl = {dl_min:.2e} is too small or dl = {dl_max:.2e} is too large for gap size = {L:.2e}')
+        
+        if dl_n < dl_p:
+            # Fill from dl_n to dl_p
+            filler_n = torch.cumsum(torch.cat([torch.tensor([gap[0]]), dl_array]), dim=0)
+            gap_sym = torch.tensor([filler_n[-1].item(), gap[1]])
+            filler_sym = fill_targeted_geometric_sym(dl_p, gap_sym, dl_t, rt, rmax)
+            filler = torch.cat([filler_n[:-1], filler_sym])
+        else:
+            # Fill from dl_p to dl_n
+            filler_p = torch.cumsum(torch.cat([torch.tensor([gap[1]]), -dl_array]), dim=0).flip(0)
+            gap_sym = torch.tensor([gap[0], filler_p[0].item()])
+            filler_sym = fill_targeted_geometric_sym(dl_n, gap_sym, dl_t, rt, rmax)
+            filler = torch.cat([filler_sym, filler_p[1:]])
+        
+        return filler
+        
 

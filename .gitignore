@@ -5,3 +5,9 @@ sparse_matrix.md
 *.png
 !./Yee_grid.png
 test*
+use_senior_code.py
+PE.py
+MLP.py
+*.docx
+./logs/*
+

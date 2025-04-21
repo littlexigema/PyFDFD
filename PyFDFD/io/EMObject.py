@@ -7,8 +7,8 @@ project_root = os.path.abspath(os.path.join(current_dir, '..', '..'))
 
 # 将项目根目录添加到 sys.path 中
 sys.path.append(project_root)
-
 from PyFDFD.material.Material import Material
+from PyFDFD.material.NPY import NPY
 from PyFDFD.shape.Shape import Shape
 from PyFDFD.shape.Box import Box
 import numpy as np
@@ -38,7 +38,7 @@ class EMObject:
     def _validate_inputs(shape, material):
         if not isinstance(shape, list) or not all(isinstance(s, Shape) for s in shape):
             raise ValueError('"shape" should be a list of Shape instances.')
-        if not isinstance(material, Material):
+        if not isinstance(material, (Material,NPY)):
             raise ValueError('"material" should be an instance of Material.')
 
     def assign_eps_mu(self):

@@ -8,15 +8,18 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from tqdm import tqdm, trange
-from loss_fn import L_TV, L_TV_L1, L_TV_frac, L_TV_reg
+from use_senior_code import *
+from loss_fn import L_TV, L_TV_L1, L_TV_frac, L_TV_reg,EdgeEnhanceSmoothLoss
 import matplotlib.pyplot as plt
 """
 以下几行自行添加的
 """
 from config import *
 from Forward import Forward_model
-FWD = Forward_model()
+FWD = Forward_model(inverse=True)
 FWD.get_system_matrix(fre)#主要是计算A_for
+FWD.field.set_chi(load_from_gt=True,file = './Data/multi_circles/1_ground_truth.npy')
+FWD.field.set_scatter_E_Born_Appro(FWD.A)
 """
 添加结束
 """
@@ -34,6 +37,7 @@ np.random.seed(0)
 FWD.A_for = FWD.A_for.to(device)
 FWD.A = FWD.A.to(device)
 FWD.field.epsil = FWD.field.epsil.to(device)
+FWD.field.E_inc = FWD.field.E_inc.to(device)
 
 DEBUG = False
 eta_0 = 120 * np.pi
@@ -67,7 +71,7 @@ def run_network(inputs, fn, embed_fn):
     return outputs
 
 
-def render(freq, H, W, N_cell, E_inc, Phi_mat, R_mat, input,input_J,  network_fn, network_fn_J, network_query_fn):
+def render(freq, H, W, N_cell, E_inc, Phi_mat, R_mat, input,input_J,  network_fn, network_fn_J, network_query_fn,global_step):
     re = {}
     lam_0 = c / (freq * 1e9)
     # lam_0 = 0.75
@@ -75,34 +79,38 @@ def render(freq, H, W, N_cell, E_inc, Phi_mat, R_mat, input,input_J,  network_fn
     omega = k_0 * c
     epsilon = network_query_fn(input, network_fn)
     epsilon = epsilon.squeeze(-1)
-    # epsilon = epsilon_gt
-    # input_numpy = input.cpu().numpy()
-    # input_numpy_1d = torch.reshape(input.transpose(0, 1), [-1, 2]).cpu().numpy()
+    # if global_step < 1000:
+    #     epsilon = epsilon * (global_step / 1000 * 0.7 + 0.3) + 1
+    # else:
+    #     epsilon = epsilon * 1 + 1
     re['epsilon'] = epsilon#从line 73可以看出，epsilon输出只有实部，也就是epsilon只有虚部
     FWD.guess.set_epsil(epsilon)
+    FWD.field.set_chi(load_from_gt=False,guess = FWD.guess)
     # FWD.guess.set_epsil(FWD.field.epsil)
     # norm = FWD.osc.in_omega0()**2
     A = FWD.A#FWD.get_system_matrix_epsil()#*norm#system matrix
     # print('System matrix.shape:{}'.format(A.shape))
-    J = network_query_fn(input_J, network_fn_J)
-    J = torch.complex(J[..., 0], J[..., 1])
-    # J = J_gt
-    re['J'] = J
-    J_ = J.detach()
-    re['J_'] = J_
+    # J = network_query_fn(input_J, network_fn_J)
+    # J = torch.complex(J[..., 0], J[..., 1])
+    # # J = J_gt
+    # re['J'] = J
+    # J_ = J.detach()
+    # re['J_'] = J_
     #re['R_mat_J'] = R_mat @ J
     # A = A.to_dense()
-    Es_pred = torch.linalg.solve(A,FWD.osc.in_omega0()**2*J)#计算散射场
-    re['R_mat_J'] = R_mat@Es_pred
+    chi = epsilon.reshape(-1,1)-1
+    Es_pred = torch.linalg.solve(A,FWD.osc.in_omega0()**2*chi*FWD.field.E_inc)#计算散射场
+    re['Es_pred'] = Es_pred
+    # re['R_mat_J'] = R_mat@Es_pred
     # epsilon_numpy = epsilon.cpu().numpy()
-    xi_all = torch.complex(torch.Tensor([0.0]), -omega * (epsilon - 1) * eps_0 * cell_area)
-    xi_forward = torch.reshape(xi_all.t(), [-1, 1])
-    xi_forward_mat = torch.diag_embed(xi_forward.squeeze(-1))
-    xi_E_inc = xi_forward_mat @ E_inc#xi_forward_mat = Diag(\epsilon)
-    print('xi_for')
-    re['J_state'] = xi_E_inc + xi_forward_mat @ Phi_mat @ J#Phi_mat中应该带的An：cell_area放在了xi_all中
+    # xi_all = torch.complex(torch.Tensor([0.0]), -omega * (epsilon - 1) * eps_0 * cell_area)
+    # xi_forward = torch.reshape(xi_all.t(), [-1, 1])
+    # xi_forward_mat = torch.diag_embed(xi_forward.squeeze(-1))
+    # xi_E_inc = xi_forward_mat @ E_inc#xi_forward_mat = Diag(\epsilon)
+    # print('xi_for')
+    # re['J_state'] = xi_E_inc + xi_forward_mat @ Phi_mat @ J#Phi_mat中应该带的An：cell_area放在了xi_all中
 
-    re['norm_xi_E_inc'] = torch.mean(xi_E_inc.real ** 2 + xi_E_inc.imag ** 2)
+    # re['norm_xi_E_inc'] = torch.mean(xi_E_inc.real ** 2 + xi_E_inc.imag ** 2)
     # xi_forward_numpy = xi_forward.cpu().numpy()
     # aa = torch.eye(N_cell)
     # bb = torch.diag_embed(xi_forward.squeeze(-1))
@@ -178,7 +186,7 @@ def config_parser():
     parser = configargparse.ArgumentParser()
     parser.add_argument('--config', is_config_file=True,
                         help='config file path')
-    parser.add_argument("--expname", type=str,default="FDFD_test",
+    parser.add_argument("--expname", type=str,default="FDFD_test_final_BP_epsil_no_TV",
                         help='experiment name')
     parser.add_argument("--basedir", type=str, default='./logs/',
                         help='where to store ckpts and logs')
@@ -190,7 +198,7 @@ def config_parser():
                         help='layers in network')
     parser.add_argument("--netwidth", type=int, default=256,
                         help='channels per layer')
-    parser.add_argument("--lrate", type=float, default=1e-3,
+    parser.add_argument("--lrate", type=float, default=5e-5,
                         help='learning rate')
     parser.add_argument("--lrate_decay", type=int, default=250,
                         help='exponential learning rate decay (in 1000 steps)')
@@ -227,6 +235,8 @@ def train():
 
     # loss_TV = L_TV_reg(TVLoss_weight=1)
     loss_TV = L_TV_L1(TVLoss_weight=1)
+    loss_TV_frac = L_TV_frac(TVLoss_weight=1)
+    EnhanceLoss = EdgeEnhanceSmoothLoss(device = device)
 
 
     # x_dom = np.load(os.path.join(args.datadir, 'x_dom.npy'))
@@ -257,30 +267,32 @@ def train():
     freq = 0.4#5#0.3#0.5#0.4#5#0.4
     assert fre == freq,RuntimeError('the frequency generating data is not equal to the inverse one')
     # gt = np.load(os.path.join(args.datadir, '1_Es.npy'))
-    gt = FWD.field.Es
+    gt = FWD.field.E_scat
     gt_real = gt.real.numpy()
     gt_imag = gt.imag.numpy()
     print("gt_real.shape:{}".format(gt_real.shape))
     if args.noise_ratio != 0:
         energe = np.sqrt(np.mean((gt_real ** 2 + gt_imag ** 2))) * (1 / np.sqrt(2))
-        gt_real = gt_real + energe*args.noise_ratio*np.random.randn(N_rec, N_inc)
-        gt_imag = gt_imag + energe * args.noise_ratio * np.random.randn(N_rec, N_inc)
+        # gt_real = gt_real + energe*args.noise_ratio*np.random.randn(N_rec, N_inc)
+        # gt_imag = gt_imag + energe * args.noise_ratio * np.random.randn(N_rec, N_inc)
+        gt_real = gt_real + energe*args.noise_ratio*np.random.randn(4096, N_inc)
+        gt_imag = gt_imag + energe * args.noise_ratio * np.random.randn(4096, N_inc)
     gt_real = torch.Tensor(gt_real).to(device)
     gt_imag = torch.Tensor(gt_imag).to(device)
 
 
-    # Phi_mat_real = np.load(os.path.join(args.datadir, 'Phi_mat_real.npy')).astype(np.float64)
-    # Phi_mat_imag = np.load(os.path.join(args.datadir, 'Phi_mat_imag.npy')).astype(np.float64)
-    # Phi_mat = torch.complex(torch.Tensor(Phi_mat_real), torch.Tensor(Phi_mat_imag)).to(device)
-    Phi_mat = FWD.field.Phi_mat.to(device)
+    # # Phi_mat_real = np.load(os.path.join(args.datadir, 'Phi_mat_real.npy')).astype(np.float64)
+    # # Phi_mat_imag = np.load(os.path.join(args.datadir, 'Phi_mat_imag.npy')).astype(np.float64)
+    # # Phi_mat = torch.complex(torch.Tensor(Phi_mat_real), torch.Tensor(Phi_mat_imag)).to(device)
+    # Phi_mat = FWD.field.Phi_mat.to(device)
 
-    # R_mat_real = np.load(os.path.join(args.datadir, 'R_mat_real.npy')).astype(np.float64)
-    # R_mat_imag = np.load(os.path.join(args.datadir, 'R_mat_imag.npy')).astype(np.float64)
-    # R_mat = torch.complex(torch.Tensor(R_mat_real), torch.Tensor(R_mat_imag)).to(device)
-    R_mat = FWD.field.R_mat.to(device)
-    # E_inc_real = np.load(os.path.join(args.datadir, 'E_inc_real.npy')).astype(np.float64)
-    # E_inc_imag = np.load(os.path.join(args.datadir, 'E_inc_imag.npy')).astype(np.float64)
-    # E_inc = torch.complex(torch.Tensor(E_inc_real), torch.Tensor(E_inc_imag)).to(device)
+    # # R_mat_real = np.load(os.path.join(args.datadir, 'R_mat_real.npy')).astype(np.float64)
+    # # R_mat_imag = np.load(os.path.join(args.datadir, 'R_mat_imag.npy')).astype(np.float64)
+    # # R_mat = torch.complex(torch.Tensor(R_mat_real), torch.Tensor(R_mat_imag)).to(device)
+    # R_mat = FWD.field.R_mat.to(device)
+    # # E_inc_real = np.load(os.path.join(args.datadir, 'E_inc_real.npy')).astype(np.float64)
+    # # E_inc_imag = np.load(os.path.join(args.datadir, 'E_inc_imag.npy')).astype(np.float64)
+    # # E_inc = torch.complex(torch.Tensor(E_inc_real), torch.Tensor(E_inc_imag)).to(device)
     E_inc = FWD.field.E_inc.to(device)
 
     # Create log dir and copy the config file
@@ -325,7 +337,8 @@ def train():
         np.save(testsavedir, output.squeeze(-1).cpu().numpy())
     print('Saved test set')
 
-    N_iters = 50000 + 1
+    N_iters = 10000 + 1
+    N_epsil = 0 + 1 
     print('Begin')
 
     start = start + 1
@@ -339,19 +352,24 @@ def train():
              xy_t.unsqueeze(0).repeat([N_cell, 1, 1])), -1)
 
         #####  Core optimization loop  #####
-        re = render(freq, H, W, N_cell=N_cell, E_inc=E_inc, Phi_mat=Phi_mat, R_mat=R_mat, input=xy_dom, input_J=coords_inc, **render_kwargs_train)
+        # re = render(freq, H, W, N_cell=N_cell, E_inc=E_inc, Phi_mat=Phi_mat, R_mat=R_mat, input=xy_dom, input_J=coords_inc, **render_kwargs_train)
+        re = render(freq, H, W, N_cell=N_cell, E_inc=E_inc, Phi_mat=None, R_mat=None, input=xy_dom, input_J=coords_inc, **render_kwargs_train,global_step=global_step)
 
         optimizer.zero_grad()
         # tt = re.real
-        img_loss_data = (img2mse(re['R_mat_J'].real, gt_real) + img2mse(re['R_mat_J'].imag, gt_imag))/torch.mean(gt_real **2 + gt_imag **2)
-        img_loss_state = (img2mse(re['J_state'].real, re['J'].real) + img2mse(re['J_state'].imag, re['J'].imag))/(re['norm_xi_E_inc'])
+        # img_loss_data = (img2mse(re['R_mat_J'].real, gt_real) + img2mse(re['R_mat_J'].imag, gt_imag))/torch.mean(gt_real **2 + gt_imag **2)
+        img_loss_data = (img2mse(re['Es_pred'].real, gt_real) + img2mse(re['Es_pred'].imag, gt_imag))/torch.mean(gt_real **2 + gt_imag **2)
+        # re['Es_pred']
+        # img_loss_state = (img2mse(re['J_state'].real, re['J'].real) + img2mse(re['J_state'].imag, re['J'].imag))/(re['norm_xi_E_inc'])
 
-        TV_loss = loss_TV(re['epsilon'])
+        # TV_loss = loss_TV(re['epsilon'])
+        # TV_loss_frac = loss_TV_frac(re['epsilon'])
+        edge_loss = EnhanceLoss(re['epsilon'])
         # loss = img_loss
-        if global_step <= 2000:
-            loss = (img_loss_data + img_loss_state)
+        if global_step <= 1000:
+            loss = img_loss_data#(img_loss_data + img_loss_state)
         else:
-            loss = (img_loss_data + img_loss_state + 0.01*TV_loss)
+            loss = img_loss_data+ 0.01*edge_loss#(img_loss_data + img_loss_state + 0.01*TV_loss)
         loss.backward()
         optimizer.step()
         # beta = min(beta * kappa, betamax)
@@ -367,7 +385,7 @@ def train():
 
         # Rest is logging
         writer.add_scalar("loss_data", img_loss_data, i)
-        writer.add_scalar("loss_state", img_loss_state, i)
+        # writer.add_scalar("loss_state", img_loss_state, i)
         if i % args.i_weights == 0:
             path = os.path.join(basedir, expname, '{:06d}.tar'.format(i))
             torch.save({
@@ -396,9 +414,45 @@ def train():
             print('Saved test set')
 
         if i % args.i_print == 0:
-            tqdm.write(f"[TRAIN] Iter: {i} freq: {freq} img_loss_data: {img_loss_data.item()} img_loss_state: {img_loss_state.item()}  TV_loss: {TV_loss.item()}")
+            # tqdm.write(f"[TRAIN] Iter: {i} freq: {freq} img_loss_data: {img_loss_data.item()} img_loss_state: {img_loss_state.item()}  TV_loss: {TV_loss.item()}")
+            # tqdm.write(f"[TRAIN] Iter: {i} freq: {freq} img_loss_data: {img_loss_data.item()} TV_loss: {TV_loss.item()}")
+            tqdm.write(f"[TRAIN] Iter: {i} freq: {freq} img_loss_data: {img_loss_data.item()} EdgeEnhanceSmoothLoss: {edge_loss.item()}")
+            # tqdm.write(f"[TRAIN] Iter: {i} freq: {freq} img_loss_data: {img_loss_data.item()} TV_loss_frac: {TV_loss_frac.item()}")
         global_step += 1
-
+    epsil = FWD.guess.epsil.clone().detach()
+    chi = epsil.reshape(-1,1)-1
+    chi.requires_grad = True  # Enable gradient computation for epsil
+    A = FWD.A
+    optimizer = torch.optim.SGD(params=[chi], lr=0.1)  # Use epsil as the parameter for SGD
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)  # Scheduler added
+    for i in trange(N_iters+1,N_iters + N_epsil):
+        """
+        让epsil直接梯度更新
+        """
+        optimizer.zero_grad()
+        Es_pred = torch.linalg.solve(A,FWD.osc.in_omega0()**2*chi*FWD.field.E_inc)#计算散射场
+        img_loss_data = (img2mse(Es_pred.real, gt_real) + img2mse(Es_pred.imag, gt_imag))/torch.mean(gt_real **2 + gt_imag **2)
+        loss = img_loss_data
+        loss.backward()
+        optimizer.step()
+        scheduler.step()  # Update the learning rate
+        if i % args.i_print == 0:
+            # tqdm.write(f"[TRAIN] Iter: {i} freq: {freq} img_loss_data: {img_loss_data.item()} img_loss_state: {img_loss_state.item()}  TV_loss: {TV_loss.item()}")
+            # tqdm.write(f"[TRAIN] Iter: {i} freq: {freq} img_loss_data: {img_loss_data.item()} TV_loss: {TV_loss.item()}")
+            tqdm.write(f"[TRAIN] Iter: {i} freq: {freq} img_loss_data: {img_loss_data.item()}")
+        if i % args.i_testset == 0 and i > 0:
+            testsavedir = os.path.join(basedir, expname, 'testset_{:06d}.npy'.format(i))
+            testsavedir_img = os.path.join(basedir, expname, 'testset_{:06d}.png'.format(i))
+            # os.makedirs(testsavedir, exist_ok=True)
+            with torch.no_grad():
+                output = (chi+1).reshape(64,64).cpu().numpy()
+                np.save(testsavedir, output)
+                sc = plt.imshow(output)
+                sc.set_cmap('hot')
+                plt.colorbar()
+                plt.savefig(testsavedir_img)
+                plt.close()
+            print('Saved test set')
 
 if __name__ == '__main__':
     torch.set_default_tensor_type('torch.cuda.FloatTensor')

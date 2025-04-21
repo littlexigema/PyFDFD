@@ -1,26 +1,30 @@
+from utils import round_complex_tensor
 import torch
 import os
 pwd = os.getcwd()
 
-# xs = 1000#(mm)1m
-xs = 3500#暂时性的修改
+xs = 1000#(mm)1m
+# xs = 3500#暂时性的修改
 #ys = 100#(mm)
 ys = xs
 assert xs == ys,ValueError("xs should be equal to ys! MOM needs circle")
 
 # m_unit = 1.5e-3
-# m_unit = 1/32
+# m_unit = 1/64
 # m_unit_for = 3/(96+14)#合成数据用的分辨率，避免inverse crime
-m_unit = 3.5/(96*3)
-m_unit_for = 3.5/((96+14)*3)
+# m_unit = 3.5/(96*3)#暂时性的修改
+
+m_unit = 1/32
+m_unit_for = m_unit
+
 centre = [0,0,0]
 
 name = "multi_circle"#反演物体名称，如果存在相关数据集则加载，否则合成相关chi
 file_path = os.path.join(pwd,'Data','multi_circles','1_ground_truth.npy')
 regSize=[]#整个反演物理区域大小(并没完全搞懂，这个有什么用)
 TME_mode = "TM"
-R_transmitter = 3.#0.72#单位m
-R_receiver = 3.#0.76#单位m
+R_transmitter = 1.5#0.72#单位m
+R_receiver = 1.5#0.76#单位m
 
 fre = 0.4#2GHZ
 d_pml = 5#像素数
@@ -43,6 +47,7 @@ n_R = 32
 theta_T = torch.linspace(0,2*pi,n_T+1)[:-1]#transmitter的角度tensor
 theta_R = torch.linspace(0,2*pi,n_R+1)[:-1]#receiver的角度tensor
 pos_T = torch.polar(torch.tensor([R_transmitter]),theta_T)#单位m
+pos_T = round_complex_tensor(pos_T,decimals=2)
 pos_T_for = pos_T/m_unit_for
 pos_T_back = pos_T/m_unit
 xs              = round(xs * 1e-3 / m_unit) * m_unit

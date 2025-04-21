@@ -49,15 +49,15 @@ class Interval:
             - distance (numpy.ndarray): Distance of each value from the nearest bound.
         """
         val = torch.asarray(val)
-        if not torch.issubdtype(val.dtype, torch.floating):
-            raise ValueError("'val' should be an array with real elements.")
+        # if not torch.issubdtype(val.dtype, torch.floating):
+        #     raise ValueError("'val' should be an array with real elements.")
 
         bn, bp = self.bound  # Lower and upper bounds
 
         truth = (val >= bn) & (val <= bp)
-
+        truth = truth.item()
         # distance = None
         # if truth.size > 0:
-        distance = torch.minimum(torch.abs(val - bn), torch.abs(val - bp))
+        # distance = torch.minimum(torch.abs(val - bn), torch.abs(val - bp))
 
-        return truth, distance
+        return truth#, distance

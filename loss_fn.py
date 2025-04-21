@@ -218,6 +218,38 @@ class Sa_Loss(nn.Module):
         k = torch.mean(k)
         return k
 
+
+class EdgeEnhanceSmoothLoss(nn.Module):
+    def __init__(self, edge_weight=1.0, smooth_weight=0.1,device='cpu'):
+        super(EdgeEnhanceSmoothLoss, self).__init__()
+        self.edge_weight = edge_weight
+        self.smooth_weight = smooth_weight
+
+        # Sobel 算子核
+        self.sobel_x = torch.tensor([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=torch.float32).unsqueeze(0).unsqueeze(0)
+        self.sobel_y = torch.tensor([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=torch.float32).unsqueeze(0).unsqueeze(0)
+        self.sobel_x = self.sobel_x.to(device)
+        self.sobel_y = self.sobel_y.to(device)
+    def forward(self, pred):
+        # 确保 Sobel 核在与输入相同的设备上
+        # device = pred.device
+        
+        pred = pred.unsqueeze(0).unsqueeze(0)
+        # 计算预测图像的梯度
+        grad_x = F.conv2d(pred, self.sobel_x, padding=1)
+        grad_y = F.conv2d(pred, self.sobel_y, padding=1)
+
+        # 边缘增强损失：梯度的 L2 范数
+        edge_loss = torch.mean(grad_x ** 2 + grad_y ** 2)
+
+        # 平滑损失：总变分正则化
+        smooth_loss = torch.mean(torch.abs(pred[:, :, :-1, :] - pred[:, :, 1:, :])) + \
+                      torch.mean(torch.abs(pred[:, :, :, :-1] - pred[:, :, :, 1:]))
+
+        # 总损失
+        loss = self.edge_weight * edge_loss + self.smooth_weight * smooth_loss
+        return loss
+
 class perception_loss(nn.Module):
     def __init__(self):
         super(perception_loss, self).__init__()

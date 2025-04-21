@@ -1,6 +1,6 @@
 from PyFDFD.shape.Box import Box
 from PyFDFD.Forward_basic import Forward_basic
-from PyFDFD.material.Material import Material
+from PyFDFD.material import Material,NPY
 from PyFDFD.io.EMObject import EMObject
 from PyFDFD.base import Axis
 from PyFDFD.base.GT import GT
@@ -19,12 +19,12 @@ class Forward_model(Forward_basic):
     yhchi           = round(invdom[3] / m_unit)
     zlchi           = round(invdom[4] / m_unit)
     zhchi           = round(invdom[5] / m_unit)
-    def __init__(self,inverse:bool = False):
+    def __init__(self,dl:float=1.0,inverse:bool = False):
         """
         inverse = True代表是反演过程的前向模型
                 = False代表合成数据的前向模型
         """
-        self.dl = 1
+        self.dl = dl
         self.inverse = inverse
         if inverse:
             tmp = np.array([[Forward_model.xlchi,Forward_model.xhchi],[Forward_model.ylchi,Forward_model.yhchi],[0,1]])
@@ -34,11 +34,20 @@ class Forward_model(Forward_basic):
             tmp = [round(ele/m_unit_for) for ele in fordom]+[0,1]
             tmp = np.array(tmp).reshape(Axis.count(),-1)
             self.domain = Box(tmp,self.dl)
+            tmp = np.array([[Forward_model.xlchi,Forward_model.xhchi],[Forward_model.ylchi,Forward_model.yhchi],[0,1]])
+            self.domain_compute = Box(tmp,1)
             self.m_unit = m_unit_for
         self.material = Material('vacuum', 'none', 1.0)
         self.emobj = EMObject([self.domain],self.material)
         self.field = Field()
-        # self.field.set_incident_E_MOM()
+        if not inverse:
+            self.material_epsil = NPY('epsil', 'none','./Data/multi_circles/1_ground_truth.npy')
+            self.emobj_epsil = EMObject([self.domain_compute],self.material_epsil)
+        else:
+            """MOM合成入射场数据"""
+            self.field.set_incident_E_MOM()
+            """FDFD合成散射场数据"""
+            
         # if not inverse:
         #     """FDFD合成数据"""
         #     self.create_eqTM()#获得系统矩阵A和激励b
@@ -50,6 +59,7 @@ class Forward_model(Forward_basic):
         _,wvlen = Field.get_lambda(fre)#离散波长
         # omega = 2*pi/wvlen
         A_for,A_back,b = self.build_system(self.m_unit,wvlen,self.domain,Field.Lpml,self.emobj,srcj_array=srcj_array)
+        # A_for,A_back,b = self.build_system(self.m_unit,wvlen,self.domain_compute,Field.Lpml,self.emobj,srcj_array=srcj_array)#withuniform=True,固定生成网格
         self.A_for = A_for
         self.ind = int(self.A_for.size(0)/3)
         A = (A_for+A_back).to_dense()

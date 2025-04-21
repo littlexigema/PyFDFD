@@ -21,6 +21,7 @@ class PointSrc(Source):
                  location: List[float], 
                  I: complex = 1.0):
         # Validate inputs
+        print('created source at position:{}'.format(location))
         if not isinstance(polarization_axis, Axis):
             raise ValueError('"polarization_axis" should be instance of Axis')
             
@@ -42,11 +43,12 @@ class PointSrc(Source):
             Yee grid上，
             对于一个点源，其极化方向的电流密度（J）需要位于对偶网格点上，
             而垂直于极化方向的电流密度需要位于主网格点上，以确保数值计算的正确性和一致性。
+            参考的maxwellfdfd包错误地将polarization 坐标放在dual上了，
             """
             if w == polarization_axis:
-                laltgrid[w.value] = location[w.value]
-            else:
                 lgrid[w.value] = location[w.value]
+            else:
+                laltgrid[w.value] = location[w.value]
                 
         # Create point shape (assuming you have a Point class similar to MATLAB)
         point = Point(location)  # You'll need to implement this class

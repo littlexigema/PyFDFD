@@ -83,6 +83,8 @@ class NeRF(nn.Module):
         ### Implementation according to the official code release (https://github.com/bmild/nerf/blob/master/run_nerf_helpers.py#L104-L105)
 
         self.output_linear = nn.Linear(W, output_ch)
+        # self.conv = torch.nn.Conv2d(in_channels=1, out_channels=1, kernel_size=3, stride=1, padding=1, bias=True)
+        # torch.nn.init.constant_(self.conv.weight, 1.0 / 9.0)
 
     def forward(self, x):
         input_pts, input_views = torch.split(x, [self.input_ch, 0], dim=-1)
@@ -95,8 +97,17 @@ class NeRF(nn.Module):
 
         outputs = self.output_linear(h)
         if self.tanh is not None:
-            outputs = 0.5 * (torch.tanh(outputs) + 1) + 1 
-            #outputs = 2 * torch.sigmoid(outputs) + 1
+            # outputs = outputs.reshape(1,1,64,64)
+            # outputs = self.conv(outputs).reshape(-1,1)
+            # outputs = F.pad(outputs, pad=(1, 1, 1, 1), mode='constant', value=0)
+            # outputs = torch.nn.AvgPool2d(kernel_size=3,stride=1)(outputs).reshape(-1,1)
+            outputs = 1+torch.sigmoid(outputs)#0.5 * (torch.tanh(outputs) + 1) + 1 
+            # if torch.rand(1).item() < 0.5:
+            #     outputs = outputs.reshape(1,1,64,64)
+            #     outputs = F.pad(outputs, pad=(1, 1, 1, 1), mode='constant', value=1)
+            #     outputs = torch.nn.AvgPool2d(kernel_size=3,stride=1)(outputs).reshape(-1,1)
+            # outputs = 0.5 * (torch.tanh(outputs) + 1) + 1  # 1.6 # for circle
+            # outputs = 0.5 * torch.sigmoid(outputs) + 1
 #        outputs = torch.sigmoid(outputs)  # [1, 3] for mnist
 
         return outputs

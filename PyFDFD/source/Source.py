@@ -10,8 +10,8 @@ class Source(ABC):
     Abstract base class for all electric current sources J.
     """
     
-    def __init__(self, lgrid_cell: List[torch.Tensor], 
-                 laltgrid_cell: List[torch.Tensor], 
+    def __init__(self, lgrid_cell: torch.Tensor, 
+                 laltgrid_cell: torch.Tensor, 
                  shape=None, 
                  forceprim: bool = False):
         """
@@ -24,10 +24,10 @@ class Source(ABC):
             forceprim: Flag to control the behavior of get_l()
         """
         # Validate inputs
-        if not (isinstance(lgrid_cell, list) and len(lgrid_cell) == Axis.count()):
+        if not (isinstance(lgrid_cell, torch.Tensor) and len(lgrid_cell) == Axis.count()):
             raise ValueError(f'"lgrid_cell" should be length-{Axis.count()} list of tensors')
         
-        if not (isinstance(laltgrid_cell, list) and len(laltgrid_cell) == Axis.count()):
+        if not (isinstance(laltgrid_cell, torch.Tensor) and len(laltgrid_cell) == Axis.count()):
             raise ValueError(f'"laltgrid_cell" should be length-{Axis.count()} list of tensors')
         
         # Initialize properties
@@ -38,12 +38,12 @@ class Source(ABC):
         self._forceprim = forceprim
 
     @property
-    def lgrid(self) -> List[torch.Tensor]:
+    def lgrid(self) -> torch.Tensor:
         """Get grid locations."""
         return self._lgrid
 
     @property
-    def laltgrid(self) -> List[torch.Tensor]:
+    def laltgrid(self) -> torch.Tensor:
         """Get alternative grid locations."""
         return self._laltgrid
 
@@ -72,8 +72,8 @@ class Source(ABC):
         if not isinstance(gt, GT):
             raise ValueError('"gt" should be instance of GT')
         self._gt = gt
-
-    def l(self) -> List[List[torch.Tensor]]:
+    @property
+    def l(self) -> torch.Tensor:
         """
         Get grid locations based on grid type.
 
@@ -95,13 +95,11 @@ class Source(ABC):
         l = torch.ones((Axis.count(),GT.count()))*torch.nan
         
         if self.forceprim:
-            for i in range(Axis.count()):
-                l[:,GT.PRIM] = self.lgrid.view(-1,1)
-                l[:,GT.DUAL] = self.laltgrid.view(-1,1)
+            l[:,GT.PRIM] = self.lgrid
+            l[:,GT.DUAL] = self.laltgrid
         else:
-            for i in range(Axis.count()):
-                l[:,self.gt] = self.lgrid.view(-1,1)
-                l[:,self.gt.alter()] = self.laltgrid.view(-1,1)
+            l[:,self.gt] = self.lgrid
+            l[:,self.gt.alter()] = self.laltgrid
         
         return l
 

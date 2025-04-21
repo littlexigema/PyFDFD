@@ -3,11 +3,12 @@ from PyFDFD.base import EquationType,GT,FT,Oscillation,PhysUnit,Axis,PML,BC
 from PyFDFD.diff import create_curls,create_Ds,create_Dw,create_masks
 from PyFDFD.io import generate_s_factor,EMObject,expand_node_array
 from PyFDFD.grid import generate_lprim3d,Grid3d
+import matplotlib.pyplot as plt
 from PyFDFD.shape import Box
 from config import *
 import torch
 import math
-# import numpy as np
+import numpy as np
 
 class Forward_basic:
     def __init__(self):
@@ -155,6 +156,7 @@ class Forward_basic:
         shape_array,sshape_array = None,None#没有实例化的shape
         # srcj_array, srcm_array = list(), list()
         src_array = [*srcj_array, *srcm_array]
+        # withuniformgrid = False#动态生成网格
         withuniformgrid = True
         isepsgiven = False
         """
@@ -162,7 +164,37 @@ class Forward_basic:
         """
         eqtype = EquationType(FT.E,GT.PRIM)#solveropts.eqtype = ...
         pml = PML.SC #solveropts.pml = ...
-        [lprim, Npml] = generate_lprim3d(domain, Lpml, list(), src_array, withuniformgrid)
+        for src in src_array:
+            src.set_gridtype(eqtype.ge)
+        if not self.inverse:
+            shape_array = [self.domain_compute]#计算domain,用Box代替
+        [lprim, Npml] = generate_lprim3d(domain, Lpml, shape_array, src_array, withuniformgrid)
+        if True:
+            x = lprim[0]
+            y = lprim[1]
+
+            # 创建网格点
+            X, Y = torch.meshgrid(x, y, indexing="ij")
+
+            # 绘制网格
+            plt.figure(figsize=(8, 8))
+            plt.scatter(X.numpy(), Y.numpy(), s=1, color="black")  # 绘制网格点
+            R = pos_T_for.real[0].item()
+            circle = plt.Circle((0, 0), R, color="red", fill=False, linewidth=2, label="Red Circle")  # 圆心(0, 0)，半径100
+            plt.gca().add_artist(circle)
+            plt.gca().set_aspect("equal", adjustable="box")  # 设置坐标轴比例相等
+            plt.title("2D Grid Visualization")
+            plt.xlabel("X-axis")
+            plt.ylabel("Y-axis")
+            plt.grid(True, linestyle="--", alpha=0.5)
+            plt.show()
+        """获取计算domain x,y mask"""
+        # pos_Tx, pos_Ty = pos_T_for.real,pos_T_for.imag
+        #self.domain_compute与lprim比较
+        # x_mask = torch.where(lprim[0].unsqueeze(1)==pos_Tx)[0]
+        # y_mask = torch.where(lprim[1].unsqueeze(1)==pos_Ty)[0]
+        # self.x_mask = x_mask
+        # self.y_mask = y_mask
 
         unit = PhysUnit(m_unit)
         osc = Oscillation(wvlen,unit)

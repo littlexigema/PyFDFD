@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from typing import Tuple,Union,List
 from tqdm import trange
 from PyFDFD.source import PlaneSrc,Source
+from PyFDFD.base import PhysUnit,Oscillation
 from PyFDFD.grid import Grid3d
 from PyFDFD.base import GT,Axis
 from config import *
@@ -95,11 +96,12 @@ class Field:
                     J_cell[w][tuple(ind)] += JMw_patch
         withdraw = True
         if withdraw:
-            import matplotlib.pyplot as plt
-            J_array = J_cell[SRCJ_[0].polarization].real.squeeze().numpy()
-            plt.imshow(J_array)
-            plt.colorbar()
-            plt.show()
+            if len(SRCJ_)>0:
+                import matplotlib.pyplot as plt
+                J_array = J_cell[SRCJ_[0].polarization].real.squeeze().numpy()
+                plt.imshow(J_array)
+                plt.colorbar()
+                plt.show()
         else:
             pass
         """
@@ -191,6 +193,25 @@ class Field:
     #     # assert isinstance(fre,list), TypeError('type(fre) should be list not {}!'.format(type(fre)))
     #     assert omega==self.omega, RuntimeError("omega of chi is not equal to Field.omega")
     #     self.chi = Field.get_chi(omega,name,**{'epsilon_robj':3,'sigma_obj':0,'r':0.01,'x_c':0,'y_c':0})
+    def set_scatter_E_Born_Appro(self,A):
+        """
+        FDFD方程：
+        (\nabla \times \mu_0^-1 \nalba \times -\omega^2\epsilon_b) E^scat = \omega^2\chi E_p
+        使用一阶近似，将入射场代入右侧E_p
+        """
+        assert self.E_inc is not None, RuntimeError("Please run Field.set_incident_E() before using this function!")
+        assert self.epsil is not None, RuntimeError("Please run Field.set_chi() before using this function!")
+        chi = self.epsil.flatten().unsqueeze(1)-1
+        _,wvlen = Field.get_lambda(fre)#离散波长
+        unit = PhysUnit(m_unit)
+        osc = Oscillation(wvlen,unit)
+        omega = osc.in_omega0()
+        b = omega**2*chi*self.E_inc
+        b = b.to(torch.complex64)
+        self.E_scat = torch.linalg.solve(A,b)
+    
+        
+
 
     def set_scatter_E_MOM(self,omega):
         """
@@ -253,7 +274,7 @@ class Field:
         
         if load_from_gt:
             import numpy as np
-            chi = np.load(**kargs)
+            epsil = np.load(**kargs)
             # plt.ion()
             # plt.imshow(chi)
             # plt.colorbar()
@@ -263,12 +284,14 @@ class Field:
             # # 使用 PIL 保存，确保图像大小精确为 n×n
             # image = Image.fromarray(array)
             # image.save("1.png")  
-            self.epsil = torch.from_numpy(chi)
+            self.epsil = torch.from_numpy(epsil)
         else:
-            # if name=="circle":
-            # for i in range(len_fre):
-            # chi = build_circle(omega,Field.nx,Field.ny,Field.m_unit,Field.m_unit,eps_b,sigma_b,**kargs)
-            pass
+            """
+            从self.guess中获取
+            """
+            epsil = kargs['guess'].epsil
+            self.epsil = epsil
+
         # return chi
 
     def get_lambda(fre:Union[int,float]):
