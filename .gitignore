@@ -9,8 +9,8 @@ test*
 # PE.py
 # MLP.py
 *.docx
-./logs/*
-./output/*
-./mnist_compare/*
-./multi_shapes_compare/*
+./logs/
+./output/
+./mnist_compare/
+./multi_shapes_compare/
 formular.md
