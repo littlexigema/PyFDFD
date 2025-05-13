@@ -6,7 +6,8 @@ from PyFDFD.base import Axis
 from PyFDFD.base.GT import GT
 from Guess import Guess
 from typing import Union
-from config import *
+# from config import *
+from synthesis_or_measure import *
 from Field import Field
 import numpy as np
 import torch

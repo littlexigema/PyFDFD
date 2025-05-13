@@ -7,10 +7,12 @@ from PyFDFD.source import PlaneSrc,Source
 from PyFDFD.base import PhysUnit,Oscillation
 from PyFDFD.grid import Grid3d
 from PyFDFD.base import GT,Axis
-from config import *
+# from config import *
+from synthesis_or_measure import *
 import torch
 import math
 import os
+from utils import *
 # from PIL import Image
 # import pandas as pd
 # data = pd.read_csv('./data.csv',header=None).values
@@ -179,6 +181,23 @@ class Field:
         #     self.E_R[:,i] = 1j/4*hankel_0_1(k*R)#在这里我们改成k*R似乎传入负值计算出来是nan+nanj
         #     R = torch.abs(pos_T[i]-pos_N).view(-1)#行优先展平，transmitter与each unit之间距离
         #     self.E_inc[:,i] = 1j/4*hankel_0_1(k*R)
+
+    def get_calibration(self,E_inc_measured):
+        """
+        self.E_inc
+        """
+        assert self.R_mat is not None, RuntimeError('You should run get_Rmat')
+        E_inc = self.R_mat@self.E_inc
+        assert E_inc.shape == E_inc_measured.shape, RuntimeError('E_inc shape is not equal to E_inc_measured')
+        num_R,num_T = E_inc.shape
+        opposite = lambda x:find_nearest_opposite_point(x, int(num_T/4), int(num_R/4))
+        index_opposite = [opposite(i+1)-1 for i in range(num_T)]
+        index_transmitter = list(range(num_T))
+
+        calibration = E_inc_measured[index_opposite,index_transmitter] / E_inc[index_opposite,index_transmitter]
+
+        return calibration
+    
 
     def export_npy(self,path = 'output'):
         import numpy as np

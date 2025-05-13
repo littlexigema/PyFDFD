@@ -1,11 +1,11 @@
 from utils import round_complex_tensor
 import torch
 import os
-
+pwd = os.getcwd()
 xs = 150
 ys = xs
 
-fre = 4
+fre = 4.0
 m_unit = 0.15/32
 m_unit_for = m_unit
 
