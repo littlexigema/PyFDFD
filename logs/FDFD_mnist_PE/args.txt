@@ -1,0 +1,16 @@
+basedir = ./logs/
+config = None
+expname = FDFD_mnist_PE
+ft_path = None
+i_embed = 0
+i_print = 1
+i_testset = 10
+i_weights = 5000
+lrate = 0.001
+lrate_decay = 250
+multires = 10
+netdepth = 8
+netwidth = 256
+noise_ratio = 0.05
+render_only = False
+sample_perturb = 0.005

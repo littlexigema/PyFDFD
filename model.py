@@ -3,6 +3,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+from senior_code.PE import RFF,LearnableRFF
+from config import *
+import math
 
 """
 摘自Image Interior,暂时性的使用，后续换成自己设计的网络
@@ -52,23 +55,45 @@ def get_embedder(multires, i=0):
     if i == -1:
         return nn.Identity(), 3
     
+    # embed_kwargs = {
+    #             'include_input' : True,
+    #             'input_dims' : 2,
+    #             'max_freq_log2' : multires-1,
+    #             'num_freqs' : multires,
+    #             'log_sampling' : True,
+    #             'periodic_fns' : [torch.sin, torch.cos],
+    # }
+    # embedder_obj = Embedder(embed_kwargs)
     embed_kwargs = {
-                'include_input' : True,
-                'input_dims' : 2,
-                'max_freq_log2' : multires-1,
-                'num_freqs' : multires,
-                'log_sampling' : True,
-                'periodic_fns' : [torch.sin, torch.cos],
+        'n_dim' :2,
+        'n_features': 512,#128,
+        'std' : 1,
     }
-    
-    embedder_obj = Embedder(**embed_kwargs)
-    embed = lambda x, eo=embedder_obj : eo.embed(x)
-    return embed, embedder_obj.out_dim
+    embedder_obj = RFF(**embed_kwargs)
+    # embedder_obj = LearnableRFF(**embed_kwargs)
+    return embedder_obj, embedder_obj.n_features
+    # embed = lambda x, eo=embedder_obj : eo.embed(x)
+    # return embed, embedder_obj.out_dim
 
+class CustomPaddingConv2d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding_value=0):
+        super(CustomPaddingConv2d, self).__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding=0)  # padding=0，因为我们手动填充
+        self.padding_value = padding_value
+        self.kernel_size = kernel_size
+
+    def forward(self, x):
+        # 计算需要的填充大小
+        pad = self.kernel_size // 2
+        # 使用指定值进行填充
+        x = F.pad(x, (pad, pad, pad, pad), mode='constant', value=self.padding_value)
+        # 应用卷积
+        x = self.conv(x)
+        return x
 
 # Model
 class NeRF(nn.Module):
-    def __init__(self, D=8, W=256, input_ch=2, output_ch=1, skips=[4], tanh=None):
+    def __init__(self, D=8, W=256, input_ch=2, output_ch=1, skips=[4], tanh=None,Max = 2):
         """ 
         """
         super(NeRF, self).__init__()
@@ -83,6 +108,7 @@ class NeRF(nn.Module):
         ### Implementation according to the official code release (https://github.com/bmild/nerf/blob/master/run_nerf_helpers.py#L104-L105)
 
         self.output_linear = nn.Linear(W, output_ch)
+        self.ratio = Max-1
         # self.conv = torch.nn.Conv2d(in_channels=1, out_channels=1, kernel_size=3, stride=1, padding=1, bias=True)
         # torch.nn.init.constant_(self.conv.weight, 1.0 / 9.0)
 
@@ -101,7 +127,8 @@ class NeRF(nn.Module):
             # outputs = self.conv(outputs).reshape(-1,1)
             # outputs = F.pad(outputs, pad=(1, 1, 1, 1), mode='constant', value=0)
             # outputs = torch.nn.AvgPool2d(kernel_size=3,stride=1)(outputs).reshape(-1,1)
-            outputs = 1+torch.sigmoid(outputs)#0.5 * (torch.tanh(outputs) + 1) + 1 
+            # outputs = 1+self.ratio*torch.sigmoid(outputs)#0.5 * (torch.tanh(outputs) + 1) + 1 
+            outputs = 1+self.ratio*(torch.tanh(outputs)+1)/2
             # if torch.rand(1).item() < 0.5:
             #     outputs = outputs.reshape(1,1,64,64)
             #     outputs = F.pad(outputs, pad=(1, 1, 1, 1), mode='constant', value=1)
@@ -109,7 +136,7 @@ class NeRF(nn.Module):
             # outputs = 0.5 * (torch.tanh(outputs) + 1) + 1  # 1.6 # for circle
             # outputs = 0.5 * torch.sigmoid(outputs) + 1
 #        outputs = torch.sigmoid(outputs)  # [1, 3] for mnist
-
+        # return F.relu(outputs-1)+1
         return outputs
 
     def load_weights_from_keras(self, weights):
@@ -140,6 +167,143 @@ class NeRF(nn.Module):
         idx_alpha_linear = 2 * self.D + 6
         self.alpha_linear.weight.data = torch.from_numpy(np.transpose(weights[idx_alpha_linear]))
         self.alpha_linear.bias.data = torch.from_numpy(np.transpose(weights[idx_alpha_linear+1]))
+
+
+class SineLayer(nn.Module):
+    def __init__(self, in_features, out_features, is_first=False, omega_0=30,Max = 2):
+        super(SineLayer, self).__init__()
+        self.omega_0 = omega_0
+        self.is_first = is_first
+        self.linear = nn.Linear(in_features, out_features)
+        self.init_weights()
+
+    def init_weights(self):
+        with torch.no_grad():
+            if self.is_first:
+                self.linear.weight.uniform_(-1 / self.linear.in_features, 1 / self.linear.in_features)
+            else:
+                bound = math.sqrt(6 / self.linear.in_features) / self.omega_0
+                self.linear.weight.uniform_(-bound, bound)
+
+    def forward(self, x):
+        return torch.sin(self.omega_0 * self.linear(x))
+
+class SIREN(nn.Module):
+    def __init__(self, D=8, W=256, input_ch=2, output_ch=1, skips=[4], omega_0=30, tanh=None):
+        super(SIREN, self).__init__()
+        self.D = D
+        self.W = W
+        self.input_ch = input_ch
+        self.skips = skips
+        self.tanh = tanh
+        self.omega_0 = omega_0
+        self.ratio = Max-1
+        self.pts_linears = nn.ModuleList()
+        for i in range(D):
+            if i == 0:
+                layer = SineLayer(input_ch, W, is_first=True, omega_0=omega_0)
+            elif i in self.skips:
+                layer = SineLayer(W + input_ch, W, omega_0=omega_0)
+            else:
+                layer = SineLayer(W, W, omega_0=omega_0)
+            self.pts_linears.append(layer)
+
+        self.output_linear = nn.Linear(W, output_ch)
+        # Final layer: custom init if needed
+        with torch.no_grad():
+            self.output_linear.weight.uniform_(-math.sqrt(6 / W) / omega_0, math.sqrt(6 / W) / omega_0)
+
+    def forward(self, x):
+        input_pts, _ = torch.split(x, [self.input_ch, 0], dim=-1)
+        h = x
+        for i, layer in enumerate(self.pts_linears):
+            if i in self.skips:
+                h = torch.cat([input_pts, h], dim=-1)
+            h = layer(h)
+
+        outputs = self.output_linear(h)
+        if self.tanh is not None:
+            outputs = 1 + self.ratio*torch.sigmoid(outputs)
+        return outputs
+
+
+class VGGReconstruction(nn.Module):
+    """
+    U-net形状
+    """
+    def __init__(self):
+        super(VGGReconstruction, self).__init__()
+        
+        # 编码器部分
+        self.encoder = nn.Sequential(
+            nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1),  # (128, 64, 64) -> (64, 64, 64)
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),   # (64, 64, 64) -> (64, 64, 64)
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),                   # (64, 64, 64) -> (64, 32, 32)
+            
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),  # (64, 32, 32) -> (128, 32, 32)
+            nn.ReLU(),
+            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1), # (128, 32, 32) -> (128, 32, 32)
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2)                    # (128, 32, 32) -> (128, 16, 16)
+        )
+        
+        # 解码器部分
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2),    # (128, 16, 16) -> (64, 32, 32)
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),   # (64, 32, 32) -> (64, 32, 32)
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2),     # (64, 32, 32) -> (32, 64, 64)
+            nn.ReLU(),
+            nn.Conv2d(32, 1, kernel_size=3, stride=1, padding=1),    # (32, 64, 64) -> (1, 64, 64)
+        )
+        
+    def forward(self, x):
+        # 编码
+        x = self.encoder(x)
+        # 解码
+        x = self.decoder(x)
+        return x 
+
+class Vgg(nn.Module):
+    def __init__(self,in_channel,out_channel):
+        super(Vgg, self).__init__()
+        
+        # 编码器部分
+        self.encoder = nn.Sequential(
+            CustomPaddingConv2d(in_channel,in_channel,1,1),
+            nn.ReLU(),
+            CustomPaddingConv2d(in_channel,64,3,1,1),  # (128, 64, 64) -> (64, 64, 64)
+            nn.ReLU(),
+            CustomPaddingConv2d(64, 64,3,1,1),   # (64, 64, 64) -> (64, 64, 64)
+            nn.ReLU(),
+            # nn.MaxPool2d(kernel_size=2, stride=2),                   # (64, 64, 64) -> (64, 32, 32)
+            CustomPaddingConv2d(64,32,1,1,1),
+            nn.ReLU(),
+            CustomPaddingConv2d(32,1,1,1,1),
+            # nn.ReLU()
+            nn.Sigmoid()
+        )
+        # self.encoder2 = nn.Sequential(
+        #     CustomPaddingConv2d(32+in_channel, 32, 1, 1),  # (32+in_channel, 64,64) -> (1, 64, 64)
+        #     nn.ReLU(),
+        #     CustomPaddingConv2d(32,1,1,1,0),
+        #     nn.Sigmoid()
+        # )
+
+    def forward(self, x):
+        x = self.encoder(x)
+        return x+1
+        # 编码
+        # encoder_output = self.encoder(x)
+        # skip_connection = torch.cat([x, encoder_output], dim=1)  # 拼接后形状: (32+in_channel, 64, 64)
+        
+        # # 第二部分编码器
+        # output = self.encoder2(skip_connection)  # 输出形状: (1, 64, 64)
+        # return output+1
+
 
 
 # Model

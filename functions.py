@@ -1,7 +1,12 @@
 import torch
-
+from scipy import special
+import numpy as np
 # 定义一些数学函数、转换等
 
+# def hankel_0_1(z):
+#     z_np = z.cpu().numpy() if isinstance(z, torch.Tensor) else np.array(z)
+#     h = special.hankel1(0, z_np)
+#     return torch.from_numpy(h).to(torch.complex64)
 def hankel_0_1(z):
     """
     相当于MATLAB中的 besselh(0, 1, z)

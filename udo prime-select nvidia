@@ -1,0 +1,12 @@
+[0;1;32m●[0m power-profiles-daemon.service - Power Profiles daemon
+     Loaded: loaded (/lib/systemd/system/power-profiles-daemon.service; enabled; vendor preset: enabled)
+     Active: [0;1;32mactive (running)[0m since Mon 2025-05-12 11:39:08 CST; 8min ago
+   Main PID: 750 (power-profiles-)
+      Tasks: 3 (limit: 18658)
+     Memory: 1.2M
+        CPU: 64ms
+     CGroup: /system.slice/power-profiles-daemon.service
+             └─750 /usr/libexec/power-profiles-daemon
+
+5月 12 11:39:08 gsr-XPS-15-7590 systemd[1]: Starting Power Profiles daemon...
+5月 12 11:39:08 gsr-XPS-15-7590 systemd[1]: Started Power Profiles daemon.
