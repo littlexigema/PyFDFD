@@ -1,1 +1,0 @@
-4.1_ans是原始方法，4.2是PE feature =512,sigmoid激活 40000 epoch,4是PE feature 512,ratio*(1+tanh)激活，9900epoch,4.3是ratio*(1+tanh),13810 epochs,4.4是ratio*(1+tanh),8500 epochs,4.5是ratio*(1+tanh),7500 epochs,4.6是ratio*(1+tanh),5500 epochs,4.7是ratio*(1+tanh),4000 epochs,4.8是ratio*(1+tanh),18090epochs,4.9是sigmoid激活，4000 epochs
