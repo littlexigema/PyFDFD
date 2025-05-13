@@ -121,7 +121,10 @@ def render(freq, H, W, N_cell, E_inc, Phi_mat, R_mat, input,input_J,  network_fn
     omega = k_0 * c
     epsilon = network_query_fn(input, network_fn)
     epsilon = epsilon.squeeze(-1)
-    
+    if global_step < 1000:
+        epsilon = epsilon * (global_step / 1000 * 1.3 + 0.9) + 1
+    else:
+        epsilon = epsilon * 2.2 + 1
     re['epsilon'] = epsilon#从line 73可以看出，epsilon输出只有实部，也就是epsilon只有虚部
     FWD.guess.set_epsil(epsilon)
     FWD.field.set_chi(load_from_gt=False,guess = FWD.guess)
