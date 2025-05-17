@@ -195,7 +195,8 @@ class Field:
         index_transmitter = list(range(num_T))
 
         calibration = E_inc_measured[index_opposite,index_transmitter] / E_inc[index_opposite,index_transmitter]
-
+        calibration = calibration.to(device)
+        self.calibration = calibration
         return calibration
     
 
@@ -258,7 +259,7 @@ class Field:
         if E_scat_prev is not None:
             self.E_tot = self.E_inc + E_scat_prev
         else:
-            self.E_tot = self.E_inc
+            self.E_tot = self.E_inc*self.calibration
         b = omega**2*chi*self.E_tot
         b = b.to(torch.complex64)
         self.E_scat = torch.linalg.solve(A,b)
@@ -347,10 +348,10 @@ class Field:
             from scipy.ndimage import zoom
             epsil = np.load(**kargs)
             # 目标尺寸
-            # zoom_height = 112 / 64
-            # zoom_width = 112 / 64
+            zoom_height = 112 / 64
+            zoom_width = 112 / 64
 
-            # epsil = zoom(epsil, (zoom_height, zoom_width), order=1)  # order=1 表示双线性插值
+            epsil = zoom(epsil, (zoom_height, zoom_width), order=1)  # order=1 表示双线性插值
             # plt.ion()
             plt.imshow(epsil,cmap='hot')
             plt.colorbar()

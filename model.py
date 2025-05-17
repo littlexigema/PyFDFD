@@ -128,7 +128,8 @@ class NeRF(nn.Module):
             # outputs = F.pad(outputs, pad=(1, 1, 1, 1), mode='constant', value=0)
             # outputs = torch.nn.AvgPool2d(kernel_size=3,stride=1)(outputs).reshape(-1,1)
             # outputs = 1+self.ratio*torch.sigmoid(outputs)#0.5 * (torch.tanh(outputs) + 1) + 1 
-            outputs = 1+self.ratio*(torch.tanh(outputs)+1)/2
+            # outputs = 1+self.ratio*(torch.tanh(outputs)+1)/2
+            outputs = torch.sigmoid(outputs)
             # if torch.rand(1).item() < 0.5:
             #     outputs = outputs.reshape(1,1,64,64)
             #     outputs = F.pad(outputs, pad=(1, 1, 1, 1), mode='constant', value=1)

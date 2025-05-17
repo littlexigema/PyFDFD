@@ -14,8 +14,8 @@ assert xs == ys,ValueError("xs should be equal to ys! MOM needs circle")
 # m_unit_for = 3/(96+14)#合成数据用的分辨率，避免inverse crime
 # m_unit = 3.5/(96*3)#暂时性的修改
 
-# m_unit = 1/56#avoid inverse crime#1/32
-m_unit = 1/32
+m_unit = 1/56#avoid inverse crime#1/32
+# m_unit = 1/32
 m_unit_for = m_unit
 
 centre = [0,0,0]

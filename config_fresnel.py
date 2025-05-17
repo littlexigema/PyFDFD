@@ -1,6 +1,8 @@
 from utils import round_complex_tensor
 import torch
 import os
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 pwd = os.getcwd()
 xs = 150
 ys = xs

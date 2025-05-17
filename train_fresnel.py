@@ -136,6 +136,7 @@ def render(freq, H, W, N_cell, E_inc, Phi_mat, R_mat, input,input_J,  network_fn
     # chi = epsilon.reshape(-1,1)-1
     # Es_pred = torch.linalg.solve(A,FWD.osc.in_omega0()**2*chi*FWD.field.E_inc)#计算散射场
     re['Es_pred'] = R_mat @ Es_pred
+    # re['calibration'] = calibration
     # re['R_mat_J'] = R_mat@Es_pred
     # epsilon_numpy = epsilon.cpu().numpy()
     # xi_all = torch.complex(torch.Tensor([0.0]), -omega * (epsilon - 1) * eps_0 * cell_area)
@@ -169,10 +170,16 @@ def create_isp_nerf(args):
     #model = VGGReconstruction()
     #model = Vgg(in_channel=128,out_channel=1)
     # model = UNet(n_channels=128, n_classes=1, bilinear=False)
-    grad_vars = list()
+    # learnable_calibration = torch.nn.Parameter(calibration.clone().detach()).to(device)
+    learnable_R_mat = torch.nn.Parameter(R_mat.clone().detach()).to(device)
+    # grad_vars = list()
     # grad_vars = list(embed_fn.parameters())
-    grad_vars += list(model.parameters())
-
+    # grad_vars.append(learnable_calibration)
+    # grad_vars += list(model.parameters())
+    grad_vars = [
+        {'params': model.parameters()},
+        # {'params': R_mat}
+    ]
     model_J = NeRF_J(D=args.netdepth, W=args.netwidth,
                    input_ch=input_ch * 2, output_ch=2, skips=skips, tanh=True).to(device)
     # grad_vars += list(model_J.parameters())
@@ -215,6 +222,8 @@ def create_isp_nerf(args):
         'network_query_fn': network_query_fn,
         'network_fn': model,
         'network_fn_J': model_J,
+        'R_mat': learnable_R_mat,
+        # 'calibration': learnable_calibration,  # 添加到 render_kwargs_train
     }
 
     # NDC only good for LLFF-style forward facing data
@@ -312,6 +321,8 @@ def train():
     #     gt_imag = gt_imag + energe * args.noise_ratio * np.random.randn(R_mat.shape[0], N_inc)
     gt_real = gt.real.to(device)
     gt_imag = gt.imag.to(device)
+    gt = gt.to(device)
+    # print('gt_mean:{}'.format(gt[bool_mask].mean()))
     R_mat = R_mat.to(device)
 
     E_inc = FWD.field.E_inc.to(device)
@@ -375,13 +386,15 @@ def train():
 
         #####  Core optimization loop  #####
         # re = render(freq, H, W, N_cell=N_cell, E_inc=E_inc, Phi_mat=Phi_mat, R_mat=R_mat, input=xy_dom, input_J=coords_inc, **render_kwargs_train)
-        re = render(freq, H, W, N_cell=N_cell, E_inc=E_inc, Phi_mat=None, R_mat=R_mat, input=coords_fig, input_J=None, **render_kwargs_train,global_step=global_step)
+        # re = render(freq, H, W, N_cell=N_cell, E_inc=E_inc, Phi_mat=None, R_mat=R_mat, input=coords_fig, input_J=None, **render_kwargs_train,global_step=global_step)
+        re = render(freq, H, W, N_cell=N_cell, E_inc=E_inc, Phi_mat=None, input=coords_fig, input_J=None, **render_kwargs_train,global_step=global_step)
 
         optimizer.zero_grad()
         # tt = re.real
         # img_loss_data = (img2mse(re['R_mat_J'].real, gt_real) + img2mse(re['R_mat_J'].imag, gt_imag))/torch.mean(gt_real **2 + gt_imag **2)
         Es_pred = re['Es_pred']*calibration*bool_mask
-        
+        # print('calibration:{}'.format(re['calibration']))
+        # print('Es_pred.mean:{}'.format(Es_pred[bool_mask].mean()))
         img_loss_data = (img2mse(Es_pred.real, gt_real) + img2mse(Es_pred.imag, gt_imag))/torch.mean(gt_real **2 + gt_imag **2)
         # re['Es_pred']
         # img_loss_state = (img2mse(re['J_state'].real, re['J'].real) + img2mse(re['J_state'].imag, re['J'].imag))/(re['norm_xi_E_inc'])
